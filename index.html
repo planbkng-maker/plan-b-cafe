@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>PLAN B | منو</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+/* ---------- استایل‌های اختصاصی صفحه‌ی اصلی ---------- */
+body{ padding-bottom:90px; }
+
+/* Splash */
+#splash{
+  position:fixed; inset:0; z-index:100; background:var(--pistachio-deep);
+  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px;
+  transition:transform .9s cubic-bezier(.76,0,.24,1), opacity .7s ease;
+}
+#splash.hide{ transform:translateY(-100%); opacity:0; pointer-events:none; }
+.splash-logo{
+  font-family:var(--font-logo); font-size:clamp(2.4rem,10vw,4rem); font-weight:800;
+  color:var(--sand); letter-spacing:1px; display:flex; gap:.35em;
+}
+.splash-logo span{ opacity:0; animation:dropIn .7s cubic-bezier(.2,1.4,.4,1) forwards; }
+.splash-logo span:nth-child(2){ animation-delay:.18s; }
+@keyframes dropIn{ from{opacity:0; transform:translateY(-36px) rotate(-8deg);} to{opacity:1; transform:translateY(0) rotate(0);} }
+.splash-sub{ color:var(--pistachio-pale); font-size:.82rem; opacity:0; animation:fadeUp .6s ease forwards .6s; }
+@keyframes fadeUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+/* Header */
+header.top{ padding:20px 20px 4px; text-align:center; cursor:pointer; }
+.logo-mark{ font-family:var(--font-logo); font-weight:800; font-size:1.4rem; color:var(--pistachio-deep); }
+.logo-mark b{ color:var(--pistachio); }
+
+.page{ display:none; animation:pageIn .4s ease; }
+.page.active{ display:block; }
+@keyframes pageIn{ from{opacity:0; transform:translateY(12px);} to{opacity:1; transform:translateY(0);} }
+
+/* ---------- صفحه‌ی خانه ---------- */
+.hero-box{ position:relative; margin:14px 16px 0; border-radius:var(--radius); overflow:hidden; height:46vh; min-height:260px; background:var(--pistachio-pale); }
+.hero-slide{
+  position:absolute; inset:0; background-size:cover; background-position:center;
+  opacity:0; transition:opacity 1s ease;
+}
+.hero-slide.active{ opacity:1; }
+.hero-empty{ display:flex; align-items:center; justify-content:center; font-size:3rem; }
+.hero-overlay{
+  position:absolute; inset:0; z-index:2;
+  background:linear-gradient(to top, rgba(59,55,41,.55), rgba(59,55,41,0) 55%);
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding-bottom:26px;
+}
+.hero-cafe-name{ font-family:var(--font-logo); color:#fff; font-size:1.8rem; font-weight:800; letter-spacing:.5px; }
+.hero-tagline{ color:var(--sand); font-size:.82rem; margin-top:4px; opacity:.9; }
+.hero-dots{ position:absolute; bottom:10px; right:0; left:0; display:flex; justify-content:center; gap:6px; z-index:3; }
+.hero-dot{ width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.5); }
+.hero-dot.active{ background:#fff; width:16px; border-radius:4px; transition:all .3s ease; }
+
+.home-actions{ padding:18px 20px 6px; display:flex; flex-direction:column; gap:12px; }
+.open-status{ text-align:center; font-size:.8rem; color:var(--muted); padding-bottom:10px; }
+
+/* ---------- صفحه‌ی انتخاب دسته‌بندی ---------- */
+.page-head{ padding:8px 20px 4px; text-align:center; }
+.page-head h2{ font-family:var(--font-logo); font-size:1.15rem; color:var(--pistachio-deep); }
+.page-head p{ font-size:.78rem; color:var(--muted); margin-top:2px; }
+.cat-index-list{ padding:16px; display:flex; flex-direction:column; gap:10px; }
+.cat-index-btn{
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--pistachio-deep); color:var(--sand);
+  padding:16px 20px; border-radius:16px; font-weight:700; font-size:.92rem;
+  transition:transform .25s ease;
+}
+.cat-index-btn:active{ transform:scale(.97); }
+.cat-index-en{ font-size:.72rem; font-weight:500; opacity:.75; font-family:var(--font-logo); }
+.empty-note{ text-align:center; color:var(--muted); font-size:.85rem; padding:30px 20px; }
+
+.touch-card{
+  margin:18px 16px 6px; background:var(--pistachio-deep); color:var(--sand);
+  border-radius:var(--radius); padding:24px 20px; text-align:center;
+}
+.touch-card h4{ font-family:var(--font-logo); margin-bottom:6px; }
+.touch-card p{ font-size:.8rem; color:var(--pistachio-pale); margin-bottom:14px; }
+.touch-card .pill-btn{ background:var(--clay); }
+
+/* ---------- صفحه‌ی فید آیتم‌ها ---------- */
+.feed-header{
+  position:sticky; top:0; z-index:20; background:var(--sand);
+  padding:10px 14px 10px; display:flex; align-items:center; gap:10px;
+  border-bottom:1px solid var(--sand-deep);
+}
+.back-btn{ font-weight:700; color:var(--pistachio-deep); font-size:.85rem; flex-shrink:0; }
+.feed-tabs{ display:flex; gap:8px; overflow-x:auto; }
+.feed-tab{
+  flex:0 0 auto; padding:9px 16px; border-radius:999px; font-size:.82rem; font-weight:600;
+  background:var(--sand-deep); color:var(--pistachio-deep); transition:all .3s ease;
+}
+.feed-tab.active{ background:var(--pistachio-deep); color:var(--sand); }
+
+#feedList{ padding:0 16px 20px; }
+.feed-section{ padding-top:4px; }
+.feed-card{
+  background:var(--sand-deep); border-radius:var(--radius); padding:18px 18px 16px;
+  margin-bottom:14px; text-align:center; position:relative;
+  animation:cardIn .5s ease both;
+}
+@keyframes cardIn{ from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);} }
+.feed-new{ position:absolute; top:14px; left:14px; }
+.feed-photo{ height:150px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; }
+.feed-photo img{ max-height:100%; border-radius:16px; object-fit:cover; box-shadow:var(--shadow); }
+.feed-emoji{ font-size:3.4rem; }
+.feed-sub{ font-size:.72rem; color:var(--muted); font-family:var(--font-logo); margin-bottom:2px; }
+.feed-title{ font-size:1.02rem; margin-bottom:6px; color:var(--ink); }
+.feed-desc{ font-size:.78rem; color:var(--muted); line-height:1.7; margin-bottom:12px; }
+
+/* ---------- درباره‌ی ما ---------- */
+.about-hero{
+  background:var(--pistachio-deep); color:var(--sand); border-radius:var(--radius);
+  padding:32px 22px; margin:14px 16px 20px; text-align:center; position:relative; overflow:hidden;
+}
+.about-hero h2{ font-family:var(--font-logo); font-size:1.4rem; margin-bottom:10px; }
+.about-hero p{ font-size:.86rem; color:var(--pistachio-pale); line-height:1.9; max-width:500px; margin:0 auto; }
+.about-body{ padding:0 20px; }
+.about-body p{ font-size:.9rem; line-height:2; color:#5c5842; margin-bottom:14px; }
+.value-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:6px 16px 24px; }
+.value-card{ background:var(--sand-deep); border-radius:16px; padding:16px 6px; text-align:center; }
+.value-card .ico{ font-size:1.5rem; margin-bottom:6px; }
+.value-card .lbl{ font-size:.72rem; font-weight:700; color:var(--pistachio-deep); }
+
+/* ---------- تماس با ما ---------- */
+.contact-wrap{ padding:12px 16px 20px; }
+.contact-card{
+  background:var(--sand-deep); border-radius:var(--radius); padding:18px; margin-bottom:12px;
+  display:flex; align-items:center; gap:14px;
+}
+.contact-ico{
+  width:42px; height:42px; border-radius:13px; background:var(--pistachio); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0;
+}
+.contact-card .label{ font-size:.72rem; color:var(--muted); margin-bottom:2px; }
+.contact-card .value{ font-weight:700; font-size:.9rem; }
+.hours-table{ width:100%; border-collapse:collapse; }
+.hours-table td{ padding:8px 4px; font-size:.82rem; border-bottom:1px dashed var(--sand); }
+.hours-table td:last-child{ text-align:left; font-weight:700; color:var(--pistachio-deep); }
+.social-row{ display:flex; gap:10px; margin-top:14px; }
+
+/* ---------- نوار پایین ---------- */
+nav.bottom{
+  position:fixed; bottom:14px; right:14px; left:14px; z-index:50;
+  background:var(--pistachio-deep); border-radius:22px; display:flex; padding:6px;
+  box-shadow:0 16px 34px -14px rgba(59,55,41,.5);
+}
+nav.bottom button{
+  flex:1; color:var(--pistachio-pale); padding:11px 4px; border-radius:16px;
+  font-size:.72rem; font-weight:600; display:flex; flex-direction:column; align-items:center; gap:3px;
+  transition:all .35s cubic-bezier(.4,0,.2,1);
+}
+nav.bottom button .ic{ font-size:1.1rem; }
+nav.bottom button.active{ background:var(--pistachio); color:#fff; transform:translateY(-3px); }
+
+@media(min-width:720px){
+  .page{ max-width:640px; margin:0 auto; }
+  nav.bottom{ max-width:640px; margin:0 auto; }
+}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="splash-logo"><span>PLAN</span><span>B</span></div>
+  <div class="splash-sub">کافه‌ی نقشه‌ی دوم 🌵</div>
+</div>
+
+<header class="top" id="logoHome">
+  <div class="logo-mark">PLAN <b>B</b></div>
+</header>
+
+<!-- ============== صفحه‌ی خانه ============== -->
+<section class="page active" id="page-home">
+  <div class="hero-box">
+    <div id="heroImages"></div>
+    <div class="hero-overlay">
+      <div class="hero-cafe-name" id="homeCafeName">PLAN B</div>
+      <div class="hero-tagline" id="homeTagline"></div>
+    </div>
+    <div class="hero-dots" id="heroDots"></div>
+  </div>
+  <div class="home-actions">
+    <button class="pill-btn" data-goto="categories">منو</button>
+    <button class="pill-btn outline" data-goto="about">درباره‌ی ما</button>
+    <button class="pill-btn outline" data-goto="contact">تماس با ما</button>
+  </div>
+  <div class="open-status" id="openStatus"></div>
+</section>
+
+<!-- ============== صفحه‌ی انتخاب دسته‌بندی ============== -->
+<section class="page" id="page-categories">
+  <div class="page-head">
+    <h2>منوی دیجیتال</h2>
+    <p>یک دسته‌بندی را انتخاب کن</p>
+  </div>
+  <div class="cat-index-list" id="categoriesList"></div>
+  <div class="touch-card">
+    <h4>در تماس باشید</h4>
+    <p>اگر سوالی داری یا به کمک نیاز داری، تماس بگیر.</p>
+    <a id="ctPhoneCall" class="pill-btn" href="tel:">تماس بگیر</a>
+  </div>
+</section>
+
+<!-- ============== صفحه‌ی فید آیتم‌ها ============== -->
+<section class="page" id="page-feed">
+  <div class="feed-header">
+    <span class="back-btn" id="feedBackBtn">‹ بازگشت</span>
+    <div class="feed-tabs" id="feedTabs"></div>
+  </div>
+  <div id="feedList"></div>
+</section>
+
+<!-- ============== درباره‌ی ما ============== -->
+<section class="page" id="page-about">
+  <div class="about-hero">
+    <h2 id="aboutTitle"></h2>
+    <p id="aboutIntro"></p>
+  </div>
+  <div class="about-body" id="aboutBody"></div>
+  <div class="value-grid" id="valueGrid"></div>
+</section>
+
+<!-- ============== تماس با ما ============== -->
+<section class="page" id="page-contact">
+  <div class="page-head"><h2>تماس با ما</h2></div>
+  <div class="contact-wrap">
+    <div class="contact-card">
+      <div class="contact-ico">📍</div>
+      <div><div class="label">آدرس</div><div class="value" id="cAddress"></div></div>
+    </div>
+    <div class="contact-card">
+      <div class="contact-ico">📞</div>
+      <div><div class="label">تلفن</div><div class="value"><a id="cPhoneVal" href="#"></a></div></div>
+    </div>
+    <div class="contact-card" style="align-items:flex-start;">
+      <div class="contact-ico">🕒</div>
+      <div style="flex:1;">
+        <div class="label" style="margin-bottom:6px;">ساعات کاری</div>
+        <table class="hours-table" id="hoursTable"></table>
+      </div>
+    </div>
+    <div class="social-row" id="socialRow"></div>
+  </div>
+</section>
+
+<nav class="bottom">
+  <button data-page="categories"><span class="ic">☰</span>منو</button>
+  <button data-page="about"><span class="ic">🌵</span>درباره ما</button>
+  <button data-page="contact"><span class="ic">☎</span>تماس با ما</button>
+</nav>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+/* ================================================================
+   PLAN B — استایل مشترک سایت و پنل مدیریت
+   برای تغییر رنگ‌بندی کل سایت، فقط همین متغیرها را عوض کنید.
+================================================================ */
+:root{
+  --sand:        #F6EFDD;   /* شن کویر / کرم پایه */
+  --sand-deep:   #ECE0C0;   /* شن تیره‌تر - پس‌زمینه کارت‌ها */
+  --pistachio:      #93A876;
+  --pistachio-deep: #52603A;   /* سبز کاکتوس تیره - تیتر/متن برند */
+  --pistachio-pale: #DEE6C9;
+  --clay:        #B97350;   /* رس کویر - رنگ تاکیدی کم‌مصرف */
+  --ink:         #3B3729;
+  --muted:       #8A8468;
+  --white:       #FFFFFF;
+  --radius:      22px;
+  --shadow:      0 16px 32px -14px rgba(82,96,58,.35);
+  --font-body:   'Vazirmatn', sans-serif;
+  --font-logo:   'Unbounded', sans-serif;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:var(--font-body);
+  background:var(--sand);
+  color:var(--ink);
+  overflow-x:hidden;
+}
+img{max-width:100%; display:block;}
+button{font-family:inherit; border:none; background:none; cursor:pointer;}
+a{color:inherit;}
+::selection{background:var(--pistachio); color:var(--white);}
+::-webkit-scrollbar{height:0; width:0;}
+
+/* ---------- دکمه‌های حبه‌ای مشترک ---------- */
+.pill-btn{
+  display:block; width:100%; text-align:center;
+  background:var(--pistachio-deep); color:var(--sand);
+  font-weight:700; font-size:.95rem;
+  padding:15px 18px; border-radius:16px;
+  transition:transform .25s ease, box-shadow .25s ease;
+}
+.pill-btn:active{ transform:scale(.97); }
+.pill-btn.outline{
+  background:var(--white); color:var(--pistachio-deep);
+  border:1.5px solid var(--pistachio-pale);
+}
+
+/* ---------- تزئین کاکتوس (جایگزین ابر) ----------
+   یک آیکون کاکتوسِ ساده و تخت که در سراسر سایت
+   به‌عنوان تزئین سبک استفاده می‌شود، با نوسان آرام. */
+.cactus-deco{
+  width:26px; height:26px; opacity:.55;
+  animation:sway 4.5s ease-in-out infinite;
+  transform-origin:bottom center;
+}
+.cactus-deco.small{ width:18px; height:18px; }
+@keyframes sway{
+  0%,100%{ transform:rotate(-4deg); }
+  50%{ transform:rotate(4deg); }
+}
+.cactus-row{
+  display:flex; justify-content:center; gap:22px;
+  padding:16px 0;
+}
+
+/* ---------- موج کویر (به‌جای موج ابری) ---------- */
+.dune-mask{ display:block; width:100%; margin-top:-2px; }
+
+/* ---------- بج قیمت ---------- */
+.price-badge{
+  background:var(--clay); color:var(--white);
+  font-weight:700; font-size:.78rem;
+  padding:6px 14px; border-radius:999px; white-space:nowrap;
+}
+
+/* ---------- نشان "جدید" ---------- */
+.badge-new{
+  font-size:.65rem; font-weight:700; color:var(--pistachio-deep);
+  background:var(--pistachio-pale); padding:3px 9px; border-radius:8px;
+}
+
+/* ---------- لودر ساده ---------- */
+.loader-dot{
+  width:10px; height:10px; border-radius:50%;
+  background:var(--pistachio); display:inline-block;
+  animation:pulse 1s ease-in-out infinite;
+}
+@keyframes pulse{ 0%,100%{transform:scale(.6); opacity:.4;} 50%{transform:scale(1); opacity:1;} }
