@@ -18,9 +18,6 @@ window.addEventListener('unhandledrejection', function(e){ showFatalError((e.rea
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>PLAN B | منو</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <style>
 /* ---------- استایل‌های اختصاصی صفحه‌ی اصلی ---------- */
@@ -33,20 +30,28 @@ body{ padding-bottom:90px; }
   transition:transform .9s cubic-bezier(.76,0,.24,1), opacity .7s ease;
 }
 #splash.hide{ transform:translateY(-100%); opacity:0; pointer-events:none; }
-.splash-logo{
-  font-family:var(--font-logo); font-size:clamp(2.8rem,11vw,4.6rem); font-weight:700;
-  color:var(--sand); letter-spacing:1px; display:flex; gap:.35em; direction:ltr; font-style:italic;
+
+/* ---------- لوگوی PLAN B (یک SVG ساده، بدون وابستگی به فونت اینترنتی) ---------- */
+.brand-logo{ color:var(--sand); display:block; }
+.brand-logo .lg-text{ font-family:var(--font-logo); }
+.brand-logo.animated .lg-text{
+  opacity:0; transform-box:fill-box; transform-origin:center; transform:translateY(-16px) scale(.92);
+  animation:logoPop .8s cubic-bezier(.22,1.4,.36,1) forwards .15s;
 }
-.splash-logo span{ opacity:0; animation:dropIn .7s cubic-bezier(.2,1.4,.4,1) forwards; }
-.splash-logo span:nth-child(2){ animation-delay:.18s; }
-@keyframes dropIn{ from{opacity:0; transform:translateY(-36px) rotate(-8deg);} to{opacity:1; transform:translateY(0) rotate(0);} }
-.splash-sub{ color:var(--pistachio-pale); font-size:.82rem; opacity:0; animation:fadeUp .6s ease forwards .6s; }
-@keyframes fadeUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+.brand-logo.animated .lg-line{ stroke-dasharray:150; stroke-dashoffset:150; animation:lineDraw .7s ease forwards .85s; }
+.brand-logo.animated .lg-dot{
+  opacity:0; transform-box:fill-box; transform-origin:center; transform:scale(0);
+  animation:dotPop .5s cubic-bezier(.34,1.7,.5,1) forwards 1.4s;
+}
+@keyframes logoPop{ to{ opacity:1; transform:translateY(0) scale(1); } }
+@keyframes lineDraw{ to{ stroke-dashoffset:0; } }
+@keyframes dotPop{ to{ opacity:1; transform:scale(1); } }
+.logo-splash{ width:min(72vw,260px); }
+.logo-header{ width:118px; color:var(--pistachio-deep); margin:0 auto; }
+.logo-hero{ width:180px; color:#fff; margin:0 auto; }
 
 /* Header */
 header.top{ padding:20px 20px 4px; text-align:center; cursor:pointer; }
-.logo-mark{ font-family:var(--font-logo); font-weight:700; font-style:italic; font-size:1.7rem; color:var(--pistachio-deep); }
-.logo-mark b{ color:var(--pistachio); }
 
 .page{ display:none; animation:pageIn .4s ease; }
 .page.active{ display:block; }
@@ -65,7 +70,6 @@ header.top{ padding:20px 20px 4px; text-align:center; cursor:pointer; }
   background:linear-gradient(to top, rgba(59,55,41,.55), rgba(59,55,41,0) 55%);
   display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding-bottom:26px;
 }
-.hero-cafe-name{ font-family:var(--font-logo); color:#fff; font-size:2.2rem; font-weight:700; font-style:italic; letter-spacing:.5px; }
 .hero-tagline{ color:var(--sand); font-size:.82rem; margin-top:4px; opacity:.9; }
 .hero-dots{ position:absolute; bottom:10px; right:0; left:0; display:flex; justify-content:center; gap:6px; z-index:3; }
 .hero-dot{ width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.5); }
@@ -105,7 +109,14 @@ header.top{ padding:20px 20px 4px; text-align:center; cursor:pointer; }
   padding:10px 14px 10px; display:flex; align-items:center; gap:10px;
   border-bottom:1px solid var(--sand-deep);
 }
-.back-btn{ font-weight:700; color:var(--pistachio-deep); font-size:.85rem; flex-shrink:0; }
+.back-btn{
+  flex-shrink:0; width:40px; height:40px; border-radius:50%;
+  background:linear-gradient(155deg, #fff, var(--sand-deep) 140%); color:var(--pistachio-deep);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 14px -8px rgba(76,90,54,.4); transition:transform .2s ease;
+}
+.back-btn:active{ transform:scale(.92); }
+.back-btn svg{ width:18px; height:18px; }
 .feed-tabs{ display:flex; gap:8px; overflow-x:auto; }
 .feed-tab{
   flex:0 0 auto; padding:10px 18px; border-radius:999px; font-size:.82rem; font-weight:600;
@@ -189,12 +200,19 @@ nav.bottom button.active{ background:rgba(255,255,255,.18); color:#fff; transfor
 <body>
 
 <div id="splash">
-  <div class="splash-logo"><span>PLAN</span><span>B</span></div>
-  <div class="splash-sub">کافه‌ی نقشه‌ی دوم 🌵</div>
+  <svg class="brand-logo logo-splash animated" viewBox="0 0 220 80" xmlns="http://www.w3.org/2000/svg">
+    <text class="lg-text" x="110" y="42" text-anchor="middle" font-style="italic" font-weight="700" font-size="34" letter-spacing="1" fill="currentColor">PLAN <tspan font-size="40">B</tspan></text>
+    <line class="lg-line" x1="35" y1="58" x2="185" y2="58" stroke="currentColor" stroke-width="1.4" opacity="0.6"/>
+    <circle class="lg-dot" cx="110" cy="58" r="3" fill="currentColor"/>
+  </svg>
 </div>
 
 <header class="top" id="logoHome">
-  <div class="logo-mark">PLAN <b>B</b></div>
+  <svg class="brand-logo logo-header" viewBox="0 0 220 80" xmlns="http://www.w3.org/2000/svg">
+    <text x="110" y="42" text-anchor="middle" font-style="italic" font-weight="700" font-size="34" letter-spacing="1" fill="currentColor">PLAN <tspan font-size="40">B</tspan></text>
+    <line x1="35" y1="58" x2="185" y2="58" stroke="currentColor" stroke-width="1.4" opacity="0.6"/>
+    <circle cx="110" cy="58" r="3" fill="currentColor"/>
+  </svg>
 </header>
 
 <!-- ============== صفحه‌ی خانه ============== -->
@@ -202,7 +220,11 @@ nav.bottom button.active{ background:rgba(255,255,255,.18); color:#fff; transfor
   <div class="hero-box">
     <div id="heroImages"></div>
     <div class="hero-overlay">
-      <div class="hero-cafe-name" id="homeCafeName">PLAN B</div>
+      <svg class="brand-logo logo-hero" id="homeCafeName" viewBox="0 0 220 80" xmlns="http://www.w3.org/2000/svg">
+        <text x="110" y="42" text-anchor="middle" font-style="italic" font-weight="700" font-size="34" letter-spacing="1" fill="currentColor">PLAN <tspan font-size="40">B</tspan></text>
+        <line x1="35" y1="58" x2="185" y2="58" stroke="currentColor" stroke-width="1.4" opacity="0.6"/>
+        <circle cx="110" cy="58" r="3" fill="currentColor"/>
+      </svg>
       <div class="hero-tagline" id="homeTagline"></div>
     </div>
     <div class="hero-dots" id="heroDots"></div>
@@ -232,7 +254,7 @@ nav.bottom button.active{ background:rgba(255,255,255,.18); color:#fff; transfor
 <!-- ============== صفحه‌ی فید آیتم‌ها ============== -->
 <section class="page" id="page-feed">
   <div class="feed-header">
-    <span class="back-btn" id="feedBackBtn">‹ بازگشت</span>
+    <span class="back-btn" id="feedBackBtn"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
     <div class="feed-tabs" id="feedTabs"></div>
   </div>
   <div id="feedList"></div>

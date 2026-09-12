@@ -15,11 +15,13 @@ let heroTimer = null;
 
 /* ---------- آیکون کاکتوس ساده (SVG درون‌خطی) ---------- */
 const CACTUS_SVG = `
-<svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="17" y="14" width="6" height="22" rx="3" fill="currentColor"/>
-  <path d="M17 20h-5a3 3 0 0 0-3 3v3" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-  <path d="M23 17h5a3 3 0 0 1 3 3v4" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-  <ellipse cx="20" cy="36" rx="9" ry="2.4" fill="currentColor" opacity=".35"/>
+<svg viewBox="0 0 40 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+  <rect x="16" y="4" width="8" height="32" rx="4"/>
+  <rect x="7" y="15" width="16" height="6" rx="3"/>
+  <rect x="7" y="15" width="7" height="15" rx="3.5"/>
+  <rect x="17" y="10" width="16" height="6" rx="3"/>
+  <rect x="26" y="10" width="7" height="13" rx="3.5"/>
+  <ellipse cx="20" cy="37.5" rx="10" ry="2" opacity=".3"/>
 </svg>`;
 
 function cactusDeco(extraClass=""){
@@ -71,14 +73,12 @@ function renderHome(){
   const heroWrap = $("#heroImages");
   const dotsWrap = $("#heroDots");
   if(!SETTINGS){
-    $("#homeCafeName").textContent = "PLAN B";
     $("#homeTagline").textContent = "به‌زودی این بخش تکمیل می‌شود...";
     heroWrap.innerHTML = "";
     dotsWrap.innerHTML = "";
     $("#openStatus").textContent = "برای شروع، از پنل مدیریت اطلاعات کافه را وارد کنید";
     return;
   }
-  $("#homeCafeName").innerHTML = SETTINGS.cafeName || "PLAN B";
   $("#homeTagline").textContent = SETTINGS.tagline || "";
   $("#openStatus").textContent = SETTINGS.hoursNote || "";
 

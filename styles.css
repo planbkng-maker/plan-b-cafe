@@ -6,16 +6,21 @@
   --sand:        #F6EFDD;   /* شن کویر / کرم پایه */
   --sand-deep:   #ECE0C0;   /* شن تیره‌تر - پس‌زمینه کارت‌ها */
   --pistachio:      #93A876;
-  --pistachio-deep: #52603A;   /* سبز کاکتوس تیره - تیتر/متن برند */
+  --pistachio-light:#AFC090;
+  --pistachio-deep: #4C5A36;   /* سبز کاکتوس تیره - تیتر/متن برند */
   --pistachio-pale: #DEE6C9;
   --clay:        #B97350;   /* رس کویر - رنگ تاکیدی کم‌مصرف */
+  --clay-light:  #CC8A63;
   --ink:         #3B3729;
   --muted:       #8A8468;
   --white:       #FFFFFF;
-  --radius:      22px;
+  --radius:      28px;
+  --radius-sm:   18px;
   --shadow:      0 16px 32px -14px rgba(82,96,58,.35);
-  --font-body:   'Vazirmatn', sans-serif;
-  --font-logo:   'Unbounded', sans-serif;
+  --shadow-3d:   0 16px 30px -14px rgba(76,90,54,.45), inset 0 1px 0 rgba(255,255,255,.55), inset 0 -10px 16px -12px rgba(0,0,0,.12);
+  --shadow-3d-press: 0 4px 10px -6px rgba(76,90,54,.4), inset 0 1px 0 rgba(255,255,255,.3);
+  --font-body:   -apple-system, BlinkMacSystemFont, "SF Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  --font-logo:   Georgia, "Noto Serif", "Times New Roman", serif;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 html{scroll-behavior:smooth;}
@@ -33,15 +38,22 @@ a{color:inherit;}
 
 /* ---------- دکمه‌های حبه‌ای مشترک ---------- */
 .pill-btn{
-  display:block; width:100%; text-align:center;
-  background:var(--pistachio-deep); color:var(--sand);
-  font-weight:700; font-size:.95rem;
-  padding:15px 18px; border-radius:16px;
-  transition:transform .25s ease, box-shadow .25s ease;
+  display:block; width:100%; text-align:center; position:relative; overflow:hidden;
+  background:linear-gradient(155deg, var(--pistachio-light), var(--pistachio-deep) 70%);
+  color:var(--sand); font-weight:700; font-size:.95rem;
+  padding:16px 18px; border-radius:var(--radius-sm);
+  box-shadow:var(--shadow-3d);
+  transition:transform .28s cubic-bezier(.34,1.56,.64,1), box-shadow .28s ease;
 }
-.pill-btn:active{ transform:scale(.97); }
+.pill-btn::after{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.35) 45%, transparent 60%);
+  transform:translateX(-120%); transition:transform .7s ease;
+}
+.pill-btn:hover::after{ transform:translateX(120%); }
+.pill-btn:active{ transform:translateY(3px) scale(.98); box-shadow:var(--shadow-3d-press); }
 .pill-btn.outline{
-  background:var(--white); color:var(--pistachio-deep);
+  background:linear-gradient(155deg, #fff, var(--sand-deep) 120%); color:var(--pistachio-deep);
   border:1.5px solid var(--pistachio-pale);
 }
 

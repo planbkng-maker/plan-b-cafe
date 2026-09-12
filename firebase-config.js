@@ -7,15 +7,14 @@
    ویرایش کنی؛ بقیه‌ی فایل‌ها را دست نزن.
 ================================================================ */
 const firebaseConfig = {
-  apiKey: "AIzaSyB0xmRi3TZtEJhqMoB1Z8ZxtwxuslN9__U",
-  authDomain: "plan-b-cafe-menu.firebaseapp.com",
-  projectId: "plan-b-cafe-menu",
-  storageBucket: "plan-b-cafe-menu.firebasestorage.app",
-  messagingSenderId: "48339328025",
-  appId: "1:48339328025:web:6e7c9af17e65fd7f291e88"
+  apiKey: "PASTE_YOUR_API_KEY",
+  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+  projectId: "PASTE_YOUR_PROJECT",
+  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_YOUR_SENDER_ID",
+  appId: "PASTE_YOUR_APP_ID"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
-const storage = firebase.storage();
