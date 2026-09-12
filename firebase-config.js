@@ -6,7 +6,6 @@
    این تنها فایلی است که برای وصل‌شدن سایت به دیتابیس واقعی باید
    ویرایش کنی؛ بقیه‌ی فایل‌ها را دست نزن.
 ================================================================ */
-const firebaseConfig = {
   apiKey: "PASTE_YOUR_API_KEY",
   authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
   projectId: "PASTE_YOUR_PROJECT",
