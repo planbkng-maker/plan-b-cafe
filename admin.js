@@ -140,27 +140,31 @@ $("#addValueRow").addEventListener("click", ()=>{
 
 $("#settingsForm").addEventListener("submit", e=>{
   e.preventDefault();
-  const data = {
-    cafeName: $("#f-cafeName").value.trim(),
-    tagline: $("#f-tagline").value.trim(),
-    hoursNote: $("#f-hoursNote").value.trim(),
-    heroImages: collectListEditor("heroImagesList"),
-    hours: collectHoursEditor(),
-    aboutTitle: $("#f-aboutTitle").value.trim(),
-    aboutIntro: $("#f-aboutIntro").value.trim(),
-    aboutBody: collectListEditor("aboutBodyList"),
-    values: collectValuesEditor(),
-    contact: {
-      address: $("#f-address").value.trim(),
-      phone: $("#f-phone").value.trim(),
-      instagram: $("#f-instagram").value.trim(),
-      whatsapp: $("#f-whatsapp").value.trim(),
-      mapUrl: $("#f-mapUrl").value.trim()
-    }
-  };
-  db.collection("settings").doc("main").set(data, {merge:true})
-    .then(()=> toast("تنظیمات ذخیره شد ✓"))
-    .catch(err=> toast("خطا: "+err.message, true));
+  try{
+    const data = {
+      cafeName: $("#f-cafeName").value.trim(),
+      tagline: $("#f-tagline").value.trim(),
+      hoursNote: $("#f-hoursNote").value.trim(),
+      heroImages: collectListEditor("heroImagesList"),
+      hours: collectHoursEditor(),
+      aboutTitle: $("#f-aboutTitle").value.trim(),
+      aboutIntro: $("#f-aboutIntro").value.trim(),
+      aboutBody: collectListEditor("aboutBodyList"),
+      values: collectValuesEditor(),
+      contact: {
+        address: $("#f-address").value.trim(),
+        phone: $("#f-phone").value.trim(),
+        instagram: $("#f-instagram").value.trim(),
+        whatsapp: $("#f-whatsapp").value.trim(),
+        mapUrl: $("#f-mapUrl").value.trim()
+      }
+    };
+    db.collection("settings").doc("main").set(data, {merge:true})
+      .then(()=> toast("تنظیمات ذخیره شد ✓"))
+      .catch(err=> { toast("خطا: "+err.message, true); showFatalError("ذخیره تنظیمات: " + err.message); });
+  }catch(err){
+    showFatalError("قبل از ذخیره: " + err.message);
+  }
 });
 
 /* ================================================================
@@ -273,6 +277,7 @@ function openItemForm(id){
   $("#itemDesc").value = it.desc || "";
   $("#itemPrice").value = it.price || "";
   $("#itemImageUrl").value = it.image || "";
+  $("#imgPreviewBox").innerHTML = it.image ? `<img src="${it.image}" onerror="this.style.display='none'">` : "";
   $("#itemIsNew").checked = !!it.isNew;
   $("#itemAvailable").checked = it.available !== false;
   $("#itemModal").classList.add("show");
@@ -280,20 +285,9 @@ function openItemForm(id){
 $("#newItemBtn").addEventListener("click", ()=> openItemForm(null));
 $("#closeItemModal").addEventListener("click", ()=> $("#itemModal").classList.remove("show"));
 
-$("#itemImageFile").addEventListener("change", async (e)=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  $("#uploadStatus").textContent = "در حال آپلود عکس...";
-  try{
-    const path = "items/" + Date.now() + "_" + file.name;
-    const ref = storage.ref().child(path);
-    await ref.put(file);
-    const url = await ref.getDownloadURL();
-    $("#itemImageUrl").value = url;
-    $("#uploadStatus").textContent = "آپلود شد ✓";
-  }catch(err){
-    $("#uploadStatus").textContent = "خطا در آپلود: " + err.message;
-  }
+$("#itemImageUrl").addEventListener("input", (e)=>{
+  const url = e.target.value.trim();
+  $("#imgPreviewBox").innerHTML = url ? `<img src="${url}" onerror="this.style.display='none'">` : "";
 });
 
 $("#itemForm").addEventListener("submit", e=>{
