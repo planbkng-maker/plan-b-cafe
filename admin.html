@@ -2,242 +2,725 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<script>
-/* نمایش هر خطای جاوااسکریپت به‌صورت یک نوار قرمز روی صفحه،
-   چون آیپد کنسول مرورگر برای دیدن خطا نداره. */
-function showFatalError(msg){
-  var el = document.getElementById('fatalErrorBox');
-  if(!el){
-    el = document.createElement('div');
-    el.id = 'fatalErrorBox';
-    el.style.cssText = 'position:fixed;top:0;right:0;left:0;z-index:9999;background:#B4483B;color:#fff;padding:14px 16px;font-family:sans-serif;font-size:13px;line-height:1.6;direction:rtl;text-align:right;box-shadow:0 4px 12px rgba(0,0,0,.3);';
-    document.body ? document.body.prepend(el) : window.addEventListener('DOMContentLoaded', ()=>document.body.prepend(el));
-  }
-  el.textContent = '⚠️ خطا: ' + msg;
-}
-window.addEventListener('error', function(e){ showFatalError(e.message + ' (خط ' + e.lineno + ')'); });
-window.addEventListener('unhandledrejection', function(e){ showFatalError((e.reason && e.reason.message) ? e.reason.message : String(e.reason)); });
-</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>پنل مدیریت PLAN B</title>
 <link rel="stylesheet" href="styles.css">
 <style>
-body{ padding-bottom:40px; }
-
-/* ---------- ورود ---------- */
+/* ================================
+   ADMIN BASE
+================================ */
+body{
+  padding-bottom:40px;
+}
+/* ================================
+   LOGIN
+================================ */
 #loginScreen{
-  min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:18px; padding:20px;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:18px;
+  padding:20px;
 }
-.login-box{ width:100%; max-width:340px; background:linear-gradient(165deg, #fff, var(--sand-deep) 140%); border-radius:var(--radius); padding:28px 24px; box-shadow:var(--shadow-3d); }
-.login-box h1{ font-family:var(--font-logo); font-weight:700; font-style:italic; color:var(--pistachio-deep); font-size:1.6rem; text-align:center; margin-bottom:4px; }
-.login-box .sub{ text-align:center; font-size:.8rem; color:var(--muted); margin-bottom:20px; }
-input, textarea, select{
-  width:100%; padding:13px 15px; border-radius:var(--radius-sm); border:1.5px solid var(--sand-deep);
-  background:#fff; font-family:inherit; font-size:.88rem; margin-bottom:10px; color:var(--ink);
-  box-shadow:inset 0 2px 5px -2px rgba(76,90,54,.15); transition:border-color .25s ease;
+.login-box{
+  width:100%;
+  max-width:340px;
+  background:linear-gradient(165deg,#fff,var(--sand-deep) 140%);
+  border-radius:var(--radius);
+  padding:28px 24px;
+  box-shadow:var(--shadow-3d);
 }
-input:focus, textarea:focus, select:focus{ outline:none; border-color:var(--pistachio); }
-textarea{ resize:vertical; min-height:70px; }
-label{ font-size:.78rem; font-weight:700; color:var(--pistachio-deep); display:block; margin-bottom:5px; }
-.field{ margin-bottom:14px; }
+.login-box h1{
+  font-family:var(--font-logo);
+  font-weight:700;
+  font-style:italic;
+  color:var(--pistachio-deep);
+  font-size:1.6rem;
+  text-align:center;
+  margin-bottom:4px;
+}
+.login-box .sub{
+  text-align:center;
+  font-size:.8rem;
+  color:var(--muted);
+  margin-bottom:20px;
+}
+input,
+textarea,
+select{
+  width:100%;
+  padding:13px 15px;
+  border-radius:var(--radius-sm);
+  border:1.5px solid var(--sand-deep);
+  background:#fff;
+  font-family:inherit;
+  font-size:.88rem;
+  margin-bottom:10px;
+  color:var(--ink);
+  box-shadow:inset 0 2px 5px -2px rgba(76,90,54,.15);
+  transition:border-color .25s ease;
+}
+input:focus,
+textarea:focus,
+select:focus{
+  outline:none;
+  border-color:var(--pistachio);
+}
+textarea{
+  resize:vertical;
+  min-height:70px;
+}
+label{
+  font-size:.78rem;
+  font-weight:700;
+  color:var(--pistachio-deep);
+  display:block;
+  margin-bottom:5px;
+}
+.field{
+  margin-bottom:14px;
+}
 .btn{
-  width:100%; padding:14px; border-radius:var(--radius-sm);
-  background:linear-gradient(155deg, var(--pistachio-light), var(--pistachio-deep) 75%); color:#fff;
-  font-weight:700; font-size:.9rem; box-shadow:var(--shadow-3d); transition:transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease;
+  width:100%;
+  padding:14px;
+  border:0;
+  border-radius:var(--radius-sm);
+  background:linear-gradient(
+    155deg,
+    var(--pistachio-light),
+    var(--pistachio-deep) 75%
+  );
+  color:#fff;
+  font-weight:700;
+  font-size:.9rem;
+  box-shadow:var(--shadow-3d);
+  transition:transform .25s ease;
+  cursor:pointer;
 }
-.btn:active{ transform:translateY(2px) scale(.98); box-shadow:var(--shadow-3d-press); }
-.btn.secondary{ background:linear-gradient(155deg, #fff, var(--sand-deep) 140%); color:var(--pistachio-deep); box-shadow:0 8px 16px -10px rgba(76,90,54,.3); }
-.btn.small{ width:auto; padding:10px 18px; font-size:.8rem; }
-#loginError{ color:#B4483B; font-size:.78rem; margin-top:8px; text-align:center; }
-
-/* ---------- هدر پنل ---------- */
-#adminApp{ display:none; }
+.btn:active{
+  transform:translateY(2px) scale(.98);
+}
+.btn.secondary{
+  background:linear-gradient(155deg,#fff,var(--sand-deep) 140%);
+  color:var(--pistachio-deep);
+  box-shadow:0 8px 16px -10px rgba(76,90,54,.3);
+}
+.btn.small{
+  width:auto;
+  padding:10px 18px;
+  font-size:.8rem;
+}
+#loginError{
+  color:#B4483B;
+  font-size:.78rem;
+  margin-top:8px;
+  text-align:center;
+}
+/* ================================
+   ADMIN APP
+================================ */
+#adminApp{
+  display:none;
+}
+/* ================================
+   HEADER
+================================ */
 .admin-header{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:18px 20px; position:sticky; top:0; background:var(--sand); z-index:10; border-bottom:1px solid var(--sand-deep);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:18px 20px;
+  position:sticky;
+  top:0;
+  background:var(--sand);
+  z-index:10;
+  border-bottom:1px solid var(--sand-deep);
 }
-.admin-header h1{ font-family:var(--font-logo); font-weight:700; font-style:italic; color:var(--pistachio-deep); font-size:1.3rem; }
-
-.admin-tabs{ display:flex; gap:8px; padding:0 16px 14px; overflow-x:auto; }
+.admin-header h1{
+  font-family:var(--font-logo);
+  font-weight:700;
+  font-style:italic;
+  color:var(--pistachio-deep);
+  font-size:1.3rem;
+}
+/* ================================
+   TABS
+================================ */
+.admin-tabs{
+  display:flex;
+  gap:8px;
+  padding:0 16px 14px;
+  overflow-x:auto;
+}
 .admin-tab{
-  flex:0 0 auto; padding:10px 20px; border-radius:999px; font-size:.82rem; font-weight:700;
-  background:var(--sand-deep); color:var(--pistachio-deep); box-shadow:0 4px 10px -6px rgba(76,90,54,.3); transition:all .25s ease;
+  flex:0 0 auto;
+  padding:10px 20px;
+  border:0;
+  border-radius:999px;
+  font-size:.82rem;
+  font-weight:700;
+  background:var(--sand-deep);
+  color:var(--pistachio-deep);
+  box-shadow:0 4px 10px -6px rgba(76,90,54,.3);
+  cursor:pointer;
 }
-.admin-tab.active{ background:linear-gradient(155deg, var(--pistachio-light), var(--pistachio-deep) 75%); color:#fff; box-shadow:var(--shadow-3d-press); }
-
-.admin-section{ display:none; padding:0 16px 40px; }
-.admin-section.active{ display:block; }
-.section-card{ background:linear-gradient(165deg, #fff, var(--sand-deep) 140%); border-radius:var(--radius); padding:20px; margin-bottom:16px; box-shadow:var(--shadow-3d); }
-.section-card h3{ color:var(--pistachio-deep); font-family:var(--font-logo); font-weight:700; font-style:italic; font-size:1.15rem; margin-bottom:14px; }
-
-.row-item{ display:flex; gap:8px; margin-bottom:8px; align-items:center; }
-.row-item input{ margin-bottom:0; }
-.row-item.two input:first-child{ flex:1; }
-.del-row{ background:#E7D9C4; color:#8a6a4a; width:34px; height:34px; border-radius:10px; flex-shrink:0; font-weight:700; }
-
-/* ---------- دسته‌بندی‌ها ---------- */
-.admin-cat-row{ display:flex; align-items:center; gap:8px; margin-bottom:10px; background:#fff; border-radius:var(--radius-sm); padding:12px; box-shadow:0 8px 16px -10px rgba(76,90,54,.25); }
-.admin-cat-row .mv{ display:flex; flex-direction:column; gap:2px; }
-.admin-cat-row .mv button{ width:26px; height:22px; background:var(--sand-deep); border-radius:6px; font-size:.7rem; }
-.admin-cat-row .grow{ flex:1; }
-.admin-cat-row input{ margin-bottom:6px; font-size:.82rem; padding:9px 10px; }
-.admin-cat-row input:last-child{ margin-bottom:0; }
-.save-cat, .del-cat{ font-size:.72rem; padding:8px 10px; border-radius:8px; font-weight:700; white-space:nowrap; }
-.save-cat{ background:var(--pistachio); color:#fff; }
-.del-cat{ background:#E7D9C4; color:#8a6a4a; }
-
-/* ---------- آیتم‌ها ---------- */
-.admin-item-row{ display:flex; align-items:center; gap:10px; background:#fff; border-radius:var(--radius-sm); padding:12px; margin-bottom:10px; box-shadow:0 8px 16px -10px rgba(76,90,54,.25); transition:transform .25s ease; }
-.admin-item-row:hover{ transform:translateY(-2px); }
-.admin-item-thumb{ width:48px; height:48px; border-radius:10px; background:var(--sand-deep); display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:1.3rem; flex-shrink:0; }
-.admin-item-thumb img{ width:100%; height:100%; object-fit:cover; }
-.ai-title{ font-weight:700; font-size:.88rem; }
-.ai-cat{ font-size:.68rem; font-weight:500; color:var(--muted); background:var(--sand-deep); padding:2px 8px; border-radius:6px; margin-right:4px; }
-.ai-sub{ font-size:.75rem; color:var(--muted); }
-.edit-item, .del-item{ font-size:.72rem; padding:8px 10px; border-radius:8px; font-weight:700; white-space:nowrap; }
-.edit-item{ background:var(--pistachio); color:#fff; }
-.del-item{ background:#E7D9C4; color:#8a6a4a; }
-
-/* ---------- مودال آیتم ---------- */
+.admin-tab.active{
+  background:linear-gradient(
+    155deg,
+    var(--pistachio-light),
+    var(--pistachio-deep) 75%
+  );
+  color:#fff;
+}
+/* ================================
+   SECTIONS
+================================ */
+.admin-section{
+  display:none;
+  padding:0 16px 40px;
+}
+.admin-section.active{
+  display:block;
+}
+.section-card{
+  background:linear-gradient(165deg,#fff,var(--sand-deep) 140%);
+  border-radius:var(--radius);
+  padding:20px;
+  margin-bottom:16px;
+  box-shadow:var(--shadow-3d);
+}
+.section-card h3{
+  color:var(--pistachio-deep);
+  font-family:var(--font-logo);
+  font-weight:700;
+  font-style:italic;
+  font-size:1.15rem;
+  margin-bottom:14px;
+}
+/* ================================
+   DYNAMIC ROWS
+================================ */
+.row-item{
+  display:flex;
+  gap:8px;
+  margin-bottom:8px;
+  align-items:center;
+}
+.row-item input{
+  margin-bottom:0;
+}
+.row-item.two input:first-child{
+  flex:1;
+}
+.del-row{
+  background:#E7D9C4;
+  color:#8a6a4a;
+  width:34px;
+  height:34px;
+  border:0;
+  border-radius:10px;
+  flex-shrink:0;
+  font-weight:700;
+  cursor:pointer;
+}
+/* ================================
+   CATEGORIES
+================================ */
+.admin-cat-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:10px;
+  background:#fff;
+  border-radius:var(--radius-sm);
+  padding:12px;
+  box-shadow:0 8px 16px -10px rgba(76,90,54,.25);
+}
+.admin-cat-row .mv{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.admin-cat-row .mv button{
+  width:26px;
+  height:22px;
+  border:0;
+  background:var(--sand-deep);
+  border-radius:6px;
+  font-size:.7rem;
+  cursor:pointer;
+}
+.admin-cat-row .grow{
+  flex:1;
+}
+.admin-cat-row input{
+  margin-bottom:6px;
+  font-size:.82rem;
+  padding:9px 10px;
+}
+.admin-cat-row input:last-child{
+  margin-bottom:0;
+}
+.save-cat,
+.del-cat{
+  font-size:.72rem;
+  padding:8px 10px;
+  border:0;
+  border-radius:8px;
+  font-weight:700;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.save-cat{
+  background:var(--pistachio);
+  color:#fff;
+}
+.del-cat{
+  background:#E7D9C4;
+  color:#8a6a4a;
+}
+/* ================================
+   ITEMS
+================================ */
+.admin-item-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:#fff;
+  border-radius:var(--radius-sm);
+  padding:12px;
+  margin-bottom:10px;
+  box-shadow:0 8px 16px -10px rgba(76,90,54,.25);
+}
+.admin-item-thumb{
+  width:48px;
+  height:48px;
+  border-radius:10px;
+  background:var(--sand-deep);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  font-size:1.3rem;
+  flex-shrink:0;
+}
+.admin-item-thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.ai-title{
+  font-weight:700;
+  font-size:.88rem;
+}
+.ai-cat{
+  font-size:.68rem;
+  font-weight:500;
+  color:var(--muted);
+  background:var(--sand-deep);
+  padding:2px 8px;
+  border-radius:6px;
+  margin-right:4px;
+}
+.ai-sub{
+  font-size:.75rem;
+  color:var(--muted);
+}
+.edit-item,
+.del-item{
+  font-size:.72rem;
+  padding:8px 10px;
+  border:0;
+  border-radius:8px;
+  font-weight:700;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.edit-item{
+  background:var(--pistachio);
+  color:#fff;
+}
+.del-item{
+  background:#E7D9C4;
+  color:#8a6a4a;
+}
+/* ================================
+   MODAL
+================================ */
 #itemModal{
-  position:fixed; inset:0; background:rgba(59,55,41,.55); z-index:80;
-  display:none; align-items:flex-end; justify-content:center;
+  position:fixed;
+  inset:0;
+  background:rgba(59,55,41,.55);
+  z-index:80;
+  display:none;
+  align-items:flex-end;
+  justify-content:center;
 }
-#itemModal.show{ display:flex; }
+#itemModal.show{
+  display:flex;
+}
 .modal-box{
-  background:var(--sand); width:100%; max-width:480px; max-height:88vh; overflow-y:auto;
-  border-radius:32px 32px 0 0; padding:22px 20px 30px; animation:slideUp .35s cubic-bezier(.34,1.56,.64,1);
+  background:var(--sand);
+  width:100%;
+  max-width:480px;
+  max-height:88vh;
+  overflow-y:auto;
+  border-radius:32px 32px 0 0;
+  padding:22px 20px 30px;
   box-shadow:0 -10px 40px -10px rgba(59,55,41,.4);
 }
-@keyframes slideUp{ from{transform:translateY(40px); opacity:0;} to{transform:translateY(0); opacity:1;} }
-.modal-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-.modal-head h3{ color:var(--pistachio-deep); font-family:var(--font-logo); font-weight:700; font-style:italic; font-size:1.2rem; }
-.checks{ display:flex; gap:18px; margin:8px 0 16px; }
-.checks label{ display:flex; align-items:center; gap:6px; font-size:.82rem; color:var(--ink); }
-.checks input{ width:auto; margin:0; }
-#imgPreviewBox{ margin:-4px 0 10px; }
-#imgPreviewBox img{ height:90px; border-radius:14px; box-shadow:var(--shadow-3d); }
-.img-help{ font-size:.76rem; color:var(--muted); line-height:1.7; margin:-4px 0 8px; }
-.img-help a{ color:var(--pistachio-deep); font-weight:700; text-decoration:underline; }
-
-/* ---------- toast ---------- */
-#toast{
-  position:fixed; bottom:24px; right:50%; transform:translateX(50%) translateY(20px);
-  background:var(--pistachio-deep); color:#fff; padding:12px 22px; border-radius:12px;
-  font-size:.82rem; font-weight:600; opacity:0; pointer-events:none; transition:all .3s ease; z-index:90;
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:16px;
 }
-#toast.show{ opacity:1; transform:translateX(50%) translateY(0); }
-#toast.error{ background:#B4483B; }
-
-.empty-note{ text-align:center; color:var(--muted); font-size:.85rem; padding:20px; }
+.modal-head h3{
+  color:var(--pistachio-deep);
+  font-family:var(--font-logo);
+  font-weight:700;
+  font-style:italic;
+  font-size:1.2rem;
+}
+.checks{
+  display:flex;
+  gap:18px;
+  margin:8px 0 16px;
+}
+.checks label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:.82rem;
+  color:var(--ink);
+}
+.checks input{
+  width:auto;
+  margin:0;
+}
+#imgPreviewBox{
+  margin:-4px 0 10px;
+}
+#imgPreviewBox img{
+  height:90px;
+  border-radius:14px;
+  box-shadow:var(--shadow-3d);
+}
+.img-help{
+  font-size:.76rem;
+  color:var(--muted);
+  line-height:1.7;
+  margin:-4px 0 8px;
+}
+.img-help a{
+  color:var(--pistachio-deep);
+  font-weight:700;
+  text-decoration:underline;
+}
+/* ================================
+   TOAST
+================================ */
+#toast{
+  position:fixed;
+  bottom:24px;
+  right:50%;
+  transform:translateX(50%) translateY(20px);
+  background:var(--pistachio-deep);
+  color:#fff;
+  padding:12px 22px;
+  border-radius:12px;
+  font-size:.82rem;
+  font-weight:600;
+  opacity:0;
+  pointer-events:none;
+  transition:all .3s ease;
+  z-index:90;
+}
+#toast.show{
+  opacity:1;
+  transform:translateX(50%) translateY(0);
+}
+#toast.error{
+  background:#B4483B;
+}
+.empty-note{
+  text-align:center;
+  color:var(--muted);
+  font-size:.85rem;
+  padding:20px;
+}
 </style>
 </head>
 <body>
-
-<!-- ============== ورود ============== -->
+<!-- ==================================================
+     LOGIN
+================================================== -->
 <div id="loginScreen">
   <div class="login-box">
     <h1>پنل مدیریت PLAN B</h1>
-    <div class="sub">با ایمیل و رمز عبور ادمین وارد شو</div>
+    <div class="sub">
+      با ایمیل و رمز عبور ادمین وارد شو
+    </div>
     <form id="loginForm">
-      <div class="field"><label>ایمیل</label><input id="loginEmail" type="email" required></div>
-      <div class="field"><label>رمز عبور</label><input id="loginPass" type="password" required></div>
-      <button class="btn" type="submit">ورود</button>
+      <div class="field">
+        <label>ایمیل</label>
+        <input
+          id="loginEmail"
+          type="email"
+          autocomplete="username"
+          required
+        >
+      </div>
+      <div class="field">
+        <label>رمز عبور</label>
+        <input
+          id="loginPass"
+          type="password"
+          autocomplete="current-password"
+          required
+        >
+      </div>
+      <button class="btn" type="submit">
+        ورود
+      </button>
       <div id="loginError"></div>
     </form>
   </div>
 </div>
-
-<!-- ============== پنل ============== -->
-<div class="admin-header">
-  <h1>پنل PLAN B</h1>
-
-  <div style="display:flex; gap:8px; align-items:center;">
-    <button class="btn small" id="publishBtn" style="background:linear-gradient(155deg,#8fa66b,#5f743d);">
-      انتشار تغییرات
-    </button>
-
-    <button class="btn secondary small" id="logoutBtn">خروج</button>
+<!-- ==================================================
+     IMPORTANT:
+     کل پنل مدیریت داخل adminApp قرار دارد
+================================================== -->
+<div id="adminApp">
+  <!-- HEADER -->
+  <div class="admin-header">
+    <h1>پنل PLAN B</h1>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button
+        class="btn small"
+        id="publishBtn"
+        style="background:linear-gradient(155deg,#8fa66b,#5f743d);"
+      >
+        انتشار تغییرات
+      </button>
+      <button
+        class="btn secondary small"
+        id="logoutBtn"
+      >
+        خروج
+      </button>
+    </div>
   </div>
-</div>
-
+  <!-- TABS -->
   <div class="admin-tabs">
-    <button class="admin-tab active" data-sec="settings">تنظیمات کلی</button>
-    <button class="admin-tab" data-sec="categories">دسته‌بندی‌ها</button>
-    <button class="admin-tab" data-sec="items">آیتم‌های منو</button>
+    <button
+      class="admin-tab active"
+      data-sec="settings"
+    >
+      تنظیمات کلی
+    </button>
+    <button
+      class="admin-tab"
+      data-sec="categories"
+    >
+      دسته‌بندی‌ها
+    </button>
+    <button
+      class="admin-tab"
+      data-sec="items"
+    >
+      آیتم‌های منو
+    </button>
   </div>
-
-  <!-- ---------- تنظیمات کلی ---------- -->
-  <div class="admin-section active" id="sec-settings">
+  <!-- ==================================================
+       SETTINGS
+  ================================================== -->
+  <div
+    class="admin-section active"
+    id="sec-settings"
+  >
     <div class="section-card">
       <h3>🌵 داده‌ی نمونه</h3>
-      <p style="font-size:.8rem; color:var(--muted); margin-bottom:12px;">اگه تازه شروع کردی، با یک کلیک چند دسته‌بندی و آیتم نمونه اضافه کن تا سایت خالی نباشه؛ بعداً هرکدوم رو می‌تونی ویرایش یا حذف کنی.</p>
-      <button class="btn secondary" id="seedBtn">افزودن داده‌ی نمونه</button>
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px;">
+        اگه تازه شروع کردی، با یک کلیک چند دسته‌بندی و آیتم نمونه اضافه کن.
+        بعداً هرکدوم رو می‌تونی ویرایش یا حذف کنی.
+      </p>
+      <button
+        class="btn secondary"
+        id="seedBtn"
+        type="button"
+      >
+        افزودن داده‌ی نمونه
+      </button>
     </div>
-
     <form id="settingsForm">
+      <!-- معرفی -->
       <div class="section-card">
         <h3>معرفی کافه</h3>
-        <div class="field"><label>نام کافه</label><input id="f-cafeName"></div>
-        <div class="field"><label>شعار / تگ‌لاین</label><input id="f-tagline"></div>
-        <div class="field"><label>وضعیت باز بودن (متن کوتاه)</label><input id="f-hoursNote" placeholder="مثلا: الان باز هستیم"></div>
-        <label>عکس‌های اسلایدر صفحه‌ی اول (لینک تصویر)</label>
+        <div class="field">
+          <label>نام کافه</label>
+          <input id="f-cafeName">
+        </div>
+        <div class="field">
+          <label>شعار / تگ‌لاین</label>
+          <input id="f-tagline">
+        </div>
+        <div class="field">
+          <label>وضعیت باز بودن</label>
+          <input
+            id="f-hoursNote"
+            placeholder="مثلا: الان باز هستیم"
+          >
+        </div>
+        <label>
+          عکس‌های اسلایدر صفحه‌ی اول
+        </label>
         <div id="heroImagesList"></div>
-        <button type="button" class="btn secondary small" id="addHeroImg">+ افزودن عکس</button>
+        <button
+          type="button"
+          class="btn secondary small"
+          id="addHeroImg"
+        >
+          + افزودن عکس
+        </button>
       </div>
-
+      <!-- ساعات کاری -->
       <div class="section-card">
         <h3>ساعات کاری</h3>
         <div id="hoursList"></div>
-        <button type="button" class="btn secondary small" id="addHoursRow">+ افزودن ردیف</button>
+        <button
+          type="button"
+          class="btn secondary small"
+          id="addHoursRow"
+        >
+          + افزودن ردیف
+        </button>
       </div>
-
+      <!-- درباره -->
       <div class="section-card">
         <h3>درباره‌ی ما</h3>
-        <div class="field"><label>عنوان</label><input id="f-aboutTitle"></div>
-        <div class="field"><label>معرفی کوتاه</label><textarea id="f-aboutIntro"></textarea></div>
-        <label>پاراگراف‌های داستان کافه</label>
+        <div class="field">
+          <label>عنوان</label>
+          <input id="f-aboutTitle">
+        </div>
+        <div class="field">
+          <label>معرفی کوتاه</label>
+          <textarea id="f-aboutIntro"></textarea>
+        </div>
+        <label>
+          پاراگراف‌های داستان کافه
+        </label>
         <div id="aboutBodyList"></div>
-        <button type="button" class="btn secondary small" id="addAboutPara">+ افزودن پاراگراف</button>
-        <label style="margin-top:14px;">ارزش‌ها / ویژگی‌ها (سه‌تایی نمایش داده می‌شود)</label>
+        <button
+          type="button"
+          class="btn secondary small"
+          id="addAboutPara"
+        >
+          + افزودن پاراگراف
+        </button>
+        <label style="margin-top:14px;">
+          ارزش‌ها / ویژگی‌ها
+        </label>
         <div id="valuesList"></div>
-        <button type="button" class="btn secondary small" id="addValueRow">+ افزودن مورد</button>
+        <button
+          type="button"
+          class="btn secondary small"
+          id="addValueRow"
+        >
+          + افزودن مورد
+        </button>
       </div>
-
+      <!-- تماس -->
       <div class="section-card">
         <h3>اطلاعات تماس</h3>
-        <div class="field"><label>آدرس</label><input id="f-address"></div>
-        <div class="field"><label>تلفن</label><input id="f-phone"></div>
-        <div class="field"><label>لینک اینستاگرام</label><input id="f-instagram"></div>
-        <div class="field"><label>لینک واتساپ</label><input id="f-whatsapp"></div>
-        <div class="field"><label>لینک نقشه (گوگل مپ)</label><input id="f-mapUrl"></div>
+        <div class="field">
+          <label>آدرس</label>
+          <input id="f-address">
+        </div>
+        <div class="field">
+          <label>تلفن</label>
+          <input id="f-phone">
+        </div>
+        <div class="field">
+          <label>لینک اینستاگرام</label>
+          <input id="f-instagram">
+        </div>
+        <div class="field">
+          <label>لینک واتساپ</label>
+          <input id="f-whatsapp">
+        </div>
+        <div class="field">
+          <label>لینک نقشه</label>
+          <input id="f-mapUrl">
+        </div>
       </div>
-
-      <button class="btn" type="submit">ذخیره‌ی همه‌ی تنظیمات</button>
+      <button
+        class="btn"
+        type="submit"
+      >
+        ذخیره‌ی همه‌ی تنظیمات
+      </button>
     </form>
   </div>
-
-  <!-- ---------- دسته‌بندی‌ها ---------- -->
-  <div class="admin-section" id="sec-categories">
+  <!-- ==================================================
+       CATEGORIES
+  ================================================== -->
+  <div
+    class="admin-section"
+    id="sec-categories"
+  >
     <div class="section-card">
       <h3>افزودن دسته‌بندی جدید</h3>
       <form id="addCatForm">
-        <div class="field"><label>نام (فارسی)</label><input id="newCatName" required></div>
-        <div class="field"><label>نام (انگلیسی - اختیاری)</label><input id="newCatNameEn"></div>
-        <button class="btn" type="submit">افزودن دسته‌بندی</button>
+        <div class="field">
+          <label>نام فارسی</label>
+          <input
+            id="newCatName"
+            required
+          >
+        </div>
+        <div class="field">
+          <label>
+            نام انگلیسی
+            <small>(اختیاری)</small>
+          </label>
+          <input id="newCatNameEn">
+        </div>
+        <button
+          class="btn"
+          type="submit"
+        >
+          افزودن دسته‌بندی
+        </button>
       </form>
     </div>
     <div class="section-card">
       <h3>دسته‌بندی‌های موجود</h3>
-      <p style="font-size:.75rem; color:var(--muted); margin-bottom:10px;">با فلش‌ها ترتیب نمایش را عوض کن.</p>
+      <p
+        style="font-size:.75rem;color:var(--muted);margin-bottom:10px;"
+      >
+        با فلش‌ها ترتیب نمایش را عوض کن.
+      </p>
       <div id="catAdminList"></div>
     </div>
   </div>
-
-  <!-- ---------- آیتم‌ها ---------- -->
-  <div class="admin-section" id="sec-items">
+  <!-- ==================================================
+       ITEMS
+  ================================================== -->
+  <div
+    class="admin-section"
+    id="sec-items"
+  >
     <div class="section-card">
-      <button class="btn" id="newItemBtn">+ افزودن آیتم جدید</button>
+      <button
+        class="btn"
+        id="newItemBtn"
+        type="button"
+      >
+        + افزودن آیتم جدید
+      </button>
     </div>
     <div class="section-card">
       <h3>آیتم‌های منو</h3>
@@ -245,37 +728,105 @@ label{ font-size:.78rem; font-weight:700; color:var(--pistachio-deep); display:b
     </div>
   </div>
 </div>
-
-<!-- ---------- مودال افزودن/ویرایش آیتم ---------- -->
+<!-- ==================================================
+     ITEM MODAL
+================================================== -->
 <div id="itemModal">
   <div class="modal-box">
     <div class="modal-head">
-      <h3 id="itemFormTitle">افزودن آیتم</h3>
-      <button id="closeItemModal" style="font-size:1.3rem;">✕</button>
+      <h3 id="itemFormTitle">
+        افزودن آیتم
+      </h3>
+      <button
+        id="closeItemModal"
+        type="button"
+        style="font-size:1.3rem;border:0;background:none;cursor:pointer;"
+      >
+        ✕
+      </button>
     </div>
     <form id="itemForm">
-      <div class="field"><label>دسته‌بندی</label><select id="itemCategory"></select></div>
-      <div class="field"><label>نام آیتم</label><input id="itemTitle" required></div>
-      <div class="field"><label>زیرعنوان (اختیاری، مثلا نام انگلیسی)</label><input id="itemSubtitle"></div>
-      <div class="field"><label>توضیحات</label><textarea id="itemDesc"></textarea></div>
-      <div class="field"><label>قیمت (متن آزاد، مثلا ۹۵٬۰۰۰ تومان)</label><input id="itemPrice"></div>
-
-      <label>عکس آیتم (لینک تصویر)</label>
-      <p class="img-help">عکس را در سایت رایگان <a href="https://imgbb.com" target="_blank" rel="noopener">imgbb.com</a> آپلود کن (نیاز به حساب کاربری هم نداره)، بعد از آپلود گزینه‌ی «Direct link» را کپی کن و اینجا بچسبان:</p>
-      <div class="field"><input id="itemImageUrl" placeholder="https://i.ibb.co/....jpg"></div>
-      <div id="imgPreviewBox"></div>
-
-      <div class="checks">
-        <label><input type="checkbox" id="itemIsNew"> نشان «جدید»</label>
-        <label><input type="checkbox" id="itemAvailable" checked> نمایش در منو</label>
+      <div class="field">
+        <label>دسته‌بندی</label>
+        <select id="itemCategory"></select>
       </div>
-      <button class="btn" type="submit">ذخیره‌ی آیتم</button>
+      <div class="field">
+        <label>نام آیتم</label>
+        <input
+          id="itemTitle"
+          required
+        >
+      </div>
+      <div class="field">
+        <label>
+          زیرعنوان
+          <small>(اختیاری، مثلا نام انگلیسی)</small>
+        </label>
+        <input id="itemSubtitle">
+      </div>
+      <div class="field">
+        <label>توضیحات</label>
+        <textarea id="itemDesc"></textarea>
+      </div>
+      <div class="field">
+        <label>
+          قیمت
+          <small>(مثلا ۹۵٬۰۰۰ تومان)</small>
+        </label>
+        <input id="itemPrice">
+      </div>
+      <label>
+        عکس آیتم
+      </label>
+      <p class="img-help">
+        عکس را در
+        <a
+          href="https://imgbb.com"
+          target="_blank"
+          rel="noopener"
+        >
+          imgbb.com
+        </a>
+        آپلود کن، سپس Direct link را کپی کن.
+      </p>
+      <div class="field">
+        <input
+          id="itemImageUrl"
+          placeholder="https://i.ibb.co/....jpg"
+        >
+      </div>
+      <div id="imgPreviewBox"></div>
+      <div class="checks">
+        <label>
+          <input
+            type="checkbox"
+            id="itemIsNew"
+          >
+          نشان «جدید»
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            id="itemAvailable"
+            checked
+          >
+          نمایش در منو
+        </label>
+      </div>
+      <button
+        class="btn"
+        type="submit"
+      >
+        ذخیره‌ی آیتم
+      </button>
     </form>
   </div>
 </div>
-
+<!-- TOAST -->
 <div id="toast"></div>
-
+<!-- ==================================================
+     FIREBASE
+================================================== -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
