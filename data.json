@@ -1,0 +1,121 @@
+{
+  "settings": {
+    "cafeName": "PLAN B",
+    "tagline": "همیشه یه نقشه‌ی بهتر هست",
+    "hoursNote": "الان باز هستیم",
+    "heroImages": [],
+    "hours": [
+      {
+        "days": "شنبه تا چهارشنبه",
+        "time": "۹:۰۰ - ۲۳:۰۰"
+      },
+      {
+        "days": "پنجشنبه و جمعه",
+        "time": "۹:۰۰ - ۲۴:۰۰"
+      }
+    ],
+    "aboutTitle": "داستان PLAN B",
+    "aboutIntro": "وقتی نقشه‌ی اول جواب نمیده، یه فنجون قهوه‌ی خوب بهترین نقشه‌ی دومه.",
+    "aboutBody": [
+      "PLAN B جایی برای آدم‌هایی‌ست که دوست دارن یه‌کم آروم‌تر زندگی کنن.",
+      "ما به کیفیت مواد اولیه و حس خوب فضا اهمیت میدیم."
+    ],
+    "values": [
+      {
+        "icon": "🌱",
+        "label": "مواد تازه"
+      },
+      {
+        "icon": "☕",
+        "label": "قهوه تخصصی"
+      },
+      {
+        "icon": "🌵",
+        "label": "فضای دنج"
+      }
+    ],
+    "contact": {
+      "address": "تهران، خیابان ...",
+      "phone": "021-00000000",
+      "instagram": "https://instagram.com/planb.cafe",
+      "whatsapp": "",
+      "mapUrl": "https://maps.google.com"
+    }
+  },
+  "categories": [
+    {
+      "id": "coffee",
+      "name": "قهوه",
+      "nameEn": "Coffee",
+      "order": 1
+    },
+    {
+      "id": "cold-drinks",
+      "name": "نوشیدنی سرد",
+      "nameEn": "Cold Drinks",
+      "order": 2
+    },
+    {
+      "id": "dessert",
+      "name": "دسر",
+      "nameEn": "Dessert",
+      "order": 3
+    },
+    {
+      "id": "breakfast",
+      "name": "صبحانه",
+      "nameEn": "Breakfast",
+      "order": 4
+    }
+  ],
+  "items": [
+    {
+      "id": "espresso",
+      "categoryId": "coffee",
+      "title": "اسپرسو",
+      "subtitle": "",
+      "desc": "دبل‌شات، طعم غلیظ",
+      "price": "۹۵٬۰۰۰ تومان",
+      "image": "",
+      "isNew": false,
+      "available": true,
+      "order": 1
+    },
+    {
+      "id": "latte",
+      "categoryId": "coffee",
+      "title": "لاته",
+      "subtitle": "",
+      "desc": "اسپرسو با شیر بخارداده",
+      "price": "۱۲۰٬۰۰۰ تومان",
+      "image": "",
+      "isNew": false,
+      "available": true,
+      "order": 2
+    },
+    {
+      "id": "cheesecake",
+      "categoryId": "dessert",
+      "title": "چیزکیک",
+      "subtitle": "",
+      "desc": "با تاپینگ توت قرمز",
+      "price": "۱۸۵٬۰۰۰ تومان",
+      "image": "",
+      "isNew": true,
+      "available": true,
+      "order": 3
+    },
+    {
+      "id": "croissant",
+      "categoryId": "breakfast",
+      "title": "کروسان",
+      "subtitle": "",
+      "desc": "کره‌ای، تازه از فر",
+      "price": "۱۴۰٬۰۰۰ تومان",
+      "image": "",
+      "isNew": false,
+      "available": true,
+      "order": 4
+    }
+  ]
+}
