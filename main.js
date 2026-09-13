@@ -1,105 +1,266 @@
 /* ================================================================
-   PLAN B — منطق سایت اصلی
-   نسخه Static
-   داده‌ها از data.json خوانده می‌شوند.
-   این فایل هیچ وابستگی‌ای به Firebase ندارد.
+   PLAN B — PUBLIC MENU
+   Static / GitHub Pages
+   Data source: data.json
+   Firebase is NOT used here.
 ================================================================ */
 
-const $  = s => document.querySelector(s);
-const $$ = s => document.querySelectorAll(s);
+"use strict";
+
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => document.querySelectorAll(selector);
 
 let SETTINGS = null;
 let CATEGORIES = [];
 let ITEMS = [];
+
 let heroIndex = 0;
 let heroTimer = null;
 
 
 /* ================================================================
-   آیکون کاکتوس ساده
+   BASIC HELPERS
+================================================================ */
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
+/* ================================================================
+   CACTUS
 ================================================================ */
 
 const CACTUS_SVG = `
-<svg viewBox="0 0 40 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 40 40"
+     fill="currentColor"
+     xmlns="http://www.w3.org/2000/svg">
   <rect x="16" y="4" width="8" height="32" rx="4"/>
   <rect x="7" y="15" width="16" height="6" rx="3"/>
   <rect x="7" y="15" width="7" height="15" rx="3.5"/>
   <rect x="17" y="10" width="16" height="6" rx="3"/>
   <rect x="26" y="10" width="7" height="13" rx="3.5"/>
   <ellipse cx="20" cy="37.5" rx="10" ry="2" opacity=".3"/>
-</svg>`;
+</svg>
+`;
 
-
-function cactusDeco(extraClass=""){
-  const el = document.createElement("span");
-
-  el.className = "cactus-deco " + extraClass;
-  el.style.color = "var(--pistachio)";
-  el.innerHTML = CACTUS_SVG;
-
-  return el.outerHTML;
-}
-
-
-/* ================================================================
-   موج کویر زیر تصویر هیرو
-================================================================ */
-
-function duneMaskSVG(){
+function cactusDeco(extraClass = "") {
   return `
-  <svg class="dune-mask"
-       viewBox="0 0 400 60"
-       preserveAspectRatio="none"
-       xmlns="http://www.w3.org/2000/svg">
-
-    <path
-      d="M0 30 C 80 60, 140 0, 220 22 C 290 42, 340 8, 400 26 L400 60 L0 60 Z"
-      fill="var(--sand)"
-    />
-
-  </svg>`;
+    <span class="cactus-deco ${extraClass}">
+      ${CACTUS_SVG}
+    </span>
+  `;
 }
 
 
 /* ================================================================
-   خواندن اطلاعات از data.json
+   LOAD DATA
 ================================================================ */
 
-async function loadData(){
+async function loadData() {
 
-  try{
+  try {
 
-    console.log("PLAN B: loading data.json ...");
+    console.log("PLAN B: loading data.json...");
 
-    const response = await fetch("./data.json?ts=" + Date.now(), {
-      cache: "no-store"
-    });
+    const url =
+      new URL(
+        "data.json",
+        window.location.href
+      ).href +
+      "?v=" +
+      Date.now();
 
-    if(!response.ok){
+    const response =
+      await fetch(url, {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+    if (!response.ok) {
       throw new Error(
-        "فایل data.json پیدا نشد. وضعیت: " + response.status
+        `data.json قابل دریافت نیست. HTTP ${response.status}`
       );
     }
 
-    const data = await response.json();
+    const text =
+      await response.text();
 
-    SETTINGS = data.settings || null;
+    if (!text.trim()) {
+      throw new Error(
+        "فایل data.json خالی است."
+      );
+    }
 
-    CATEGORIES = Array.isArray(data.categories)
-      ? data.categories
-      : [];
+    let data;
 
-    ITEMS = Array.isArray(data.items)
-      ? data.items
-      : [];
+    try {
+
+      data = JSON.parse(text);
+
+    } catch (jsonError) {
+
+      console.error(
+        "INVALID JSON:",
+        jsonError,
+        text
+      );
+
+      throw new Error(
+        "ساختار data.json معتبر نیست. فایل JSON را بررسی کنید."
+      );
+    }
 
 
-    console.log("PLAN B data loaded:", {
-      settings: !!SETTINGS,
-      categories: CATEGORIES.length,
-      items: ITEMS.length
-    });
+    /* ------------------------------------------------------------
+       VALIDATE ROOT
+    ------------------------------------------------------------ */
 
+    if (
+      !data ||
+      typeof data !== "object" ||
+      Array.isArray(data)
+    ) {
+      throw new Error(
+        "ساختار اصلی data.json صحیح نیست."
+      );
+    }
+
+
+    /* ------------------------------------------------------------
+       SETTINGS
+    ------------------------------------------------------------ */
+
+    SETTINGS =
+      data.settings &&
+      typeof data.settings === "object"
+        ? data.settings
+        : {};
+
+
+    /* ------------------------------------------------------------
+       CATEGORIES
+    ------------------------------------------------------------ */
+
+    CATEGORIES =
+      Array.isArray(data.categories)
+        ? data.categories
+            .filter(
+              category =>
+                category &&
+                category.id &&
+                category.name
+            )
+            .map(category => ({
+              id: String(category.id),
+              name: String(category.name),
+              nameEn:
+                category.nameEn
+                  ? String(category.nameEn)
+                  : "",
+              order:
+                Number(category.order || 0)
+            }))
+            .sort(
+              (a, b) =>
+                a.order - b.order
+            )
+        : [];
+
+
+    /* ------------------------------------------------------------
+       ITEMS
+    ------------------------------------------------------------ */
+
+    const validCategoryIds =
+      new Set(
+        CATEGORIES.map(
+          category => category.id
+        )
+      );
+
+    ITEMS =
+      Array.isArray(data.items)
+        ? data.items
+            .filter(item => {
+
+              if (
+                !item ||
+                !item.id ||
+                !item.title
+              ) {
+                return false;
+              }
+
+              if (
+                item.categoryId &&
+                !validCategoryIds.has(
+                  String(item.categoryId)
+                )
+              ) {
+                console.warn(
+                  "PLAN B: item ignored because category does not exist:",
+                  item
+                );
+
+                return false;
+              }
+
+              return true;
+
+            })
+            .map(item => ({
+              id: String(item.id),
+              categoryId:
+                String(item.categoryId || ""),
+              title:
+                String(item.title || ""),
+              subtitle:
+                String(item.subtitle || ""),
+              desc:
+                String(item.desc || ""),
+              price:
+                String(item.price || ""),
+              image:
+                String(item.image || ""),
+              isNew:
+                Boolean(item.isNew),
+              available:
+                item.available !== false,
+              order:
+                Number(item.order || 0)
+            }))
+            .sort(
+              (a, b) =>
+                a.order - b.order
+            )
+        : [];
+
+
+    console.log(
+      "PLAN B DATA LOADED:",
+      {
+        categories:
+          CATEGORIES.length,
+        items:
+          ITEMS.length,
+        settings:
+          !!SETTINGS
+      }
+    );
+
+
+    /* ------------------------------------------------------------
+       RENDER
+    ------------------------------------------------------------ */
 
     renderHome();
     renderAbout();
@@ -108,11 +269,17 @@ async function loadData(){
     renderFeed();
 
 
-  }catch(err){
+  } catch (error) {
 
-    console.error("PLAN B DATA ERROR:", err);
+    console.error(
+      "PLAN B DATA ERROR:",
+      error
+    );
 
-    showDataError(err.message);
+    showDataError(
+      error.message ||
+      "خطا در دریافت اطلاعات."
+    );
 
   }
 
@@ -120,130 +287,189 @@ async function loadData(){
 
 
 /* ================================================================
-   نمایش خطای داده
+   ERROR
 ================================================================ */
 
-function showDataError(message){
+function showDataError(message) {
 
-  const homeTagline = $("#homeTagline");
-  const openStatus = $("#openStatus");
-  const heroWrap = $("#heroImages");
-  const dotsWrap = $("#heroDots");
+  const status =
+    $("#openStatus");
 
-  if(homeTagline){
-    homeTagline.textContent = "PLAN B";
+  if (status) {
+    status.textContent =
+      "خطا در دریافت اطلاعات منو";
   }
 
-  if(heroWrap){
-    heroWrap.innerHTML = `
+  const hero =
+    $("#heroImages");
+
+  if (hero) {
+    hero.innerHTML = `
       <div class="hero-slide active hero-empty">
         🌵
       </div>
     `;
   }
 
-  if(dotsWrap){
-    dotsWrap.innerHTML = "";
+  const dots =
+    $("#heroDots");
+
+  if (dots) {
+    dots.innerHTML = "";
   }
 
-  if(openStatus){
-    openStatus.textContent = "خطا در بارگذاری اطلاعات منو";
-  }
-
-  console.error("Data loading error:", message);
+  console.error(
+    "PLAN B:",
+    message
+  );
 
 }
 
 
 /* ================================================================
-   صفحه‌ی خانه
+   HOME
 ================================================================ */
 
-function renderHome(){
+function renderHome() {
 
-  const heroWrap = $("#heroImages");
-  const dotsWrap = $("#heroDots");
+  if (!SETTINGS) return;
 
-  if(!heroWrap || !dotsWrap) return;
+  const tagline =
+    $("#homeTagline");
+
+  if (tagline) {
+    tagline.textContent =
+      SETTINGS.tagline || "";
+  }
+
+  const status =
+    $("#openStatus");
+
+  if (status) {
+    status.textContent =
+      SETTINGS.hoursNote || "";
+  }
 
 
-  if(!SETTINGS){
+  const hero =
+    $("#heroImages");
 
-    $("#homeTagline").textContent =
-      "به‌زودی این بخش تکمیل می‌شود...";
+  const dots =
+    $("#heroDots");
 
-    heroWrap.innerHTML = "";
+  if (!hero || !dots) {
+    return;
+  }
 
-    dotsWrap.innerHTML = "";
 
-    $("#openStatus").textContent =
-      "اطلاعات کافه هنوز منتشر نشده است";
+  const images =
+    Array.isArray(
+      SETTINGS.heroImages
+    )
+      ? SETTINGS.heroImages.filter(Boolean)
+      : [];
+
+
+  hero.innerHTML =
+    images
+      .map(
+        (src, index) => `
+          <div
+            class="hero-slide ${
+              index === 0
+                ? "active"
+                : ""
+            }"
+            style="background-image:url('${src}')">
+          </div>
+        `
+      )
+      .join("");
+
+
+  if (!images.length) {
+
+    hero.innerHTML = `
+      <div class="hero-slide active hero-empty">
+        🌵
+      </div>
+    `;
+
+    dots.innerHTML = "";
 
     return;
   }
 
 
-  $("#homeTagline").textContent =
-    SETTINGS.tagline || "";
-
-  $("#openStatus").textContent =
-    SETTINGS.hoursNote || "";
-
-
-  const imgs = (SETTINGS.heroImages || [])
-    .filter(Boolean);
-
-
-  heroWrap.innerHTML = imgs.map((src,i)=>`
-
-    <div
-      class="hero-slide ${i===0 ? "active" : ""}"
-      style="background-image:url('${src}')">
-    </div>
-
-  `).join("") || `
-
-    <div class="hero-slide active hero-empty">
-      🌵
-    </div>
-
-  `;
-
-
-  dotsWrap.innerHTML = imgs.map((_,i)=>`
-
-    <span class="hero-dot ${i===0 ? "active" : ""}"></span>
-
-  `).join("");
+  dots.innerHTML =
+    images
+      .map(
+        (_, index) => `
+          <span
+            class="hero-dot ${
+              index === 0
+                ? "active"
+                : ""
+            }">
+          </span>
+        `
+      )
+      .join("");
 
 
   heroIndex = 0;
 
   clearInterval(heroTimer);
 
+  if (images.length > 1) {
 
-  if(imgs.length > 1){
+    heroTimer =
+      setInterval(
+        () => {
 
-    heroTimer = setInterval(()=>{
+          const slides =
+            $$("#heroImages .hero-slide");
 
-      const slides = $$(".hero-slide");
-      const dots = $$(".hero-dot");
+          const dotsList =
+            $$("#heroDots .hero-dot");
 
-      if(!slides.length) return;
+          if (!slides.length) return;
 
+          slides.forEach(
+            slide =>
+              slide.classList.remove(
+                "active"
+              )
+          );
 
-      slides[heroIndex]?.classList.remove("active");
-      dots[heroIndex]?.classList.remove("active");
+          dotsList.forEach(
+            dot =>
+              dot.classList.remove(
+                "active"
+              )
+          );
 
+          heroIndex =
+            (heroIndex + 1) %
+            slides.length;
 
-      heroIndex =
-        (heroIndex + 1) % slides.length;
+          slides[
+            heroIndex
+          ].classList.add(
+            "active"
+          );
 
+          if (dotsList[heroIndex]) {
+            dotsList[
+              heroIndex
+            ].classList.add(
+              "active"
+            );
+          }
 
-      slides[heroIndex]?.classList.add("active");
-      dots[heroIndex]?.classList.add("active");
-
-    },3200);
+        },
+        4500
+      );
 
   }
 
@@ -251,19 +477,20 @@ function renderHome(){
 
 
 /* ================================================================
-   صفحه انتخاب دسته‌بندی
+   CATEGORIES PAGE
 ================================================================ */
 
-function renderCategoriesList(){
+function renderCategoriesList() {
 
-  const wrap = $("#categoriesList");
+  const container =
+    $("#categoriesList");
 
-  if(!wrap) return;
+  if (!container) return;
 
 
-  if(!CATEGORIES.length){
+  if (!CATEGORIES.length) {
 
-    wrap.innerHTML = `
+    container.innerHTML = `
       <p class="empty-note">
         هنوز دسته‌بندی‌ای ثبت نشده.
       </p>
@@ -273,86 +500,92 @@ function renderCategoriesList(){
   }
 
 
-  wrap.innerHTML = CATEGORIES.map(c=>`
+  container.innerHTML =
+    CATEGORIES
+      .map(
+        category => `
+          <button
+            class="cat-index-btn"
+            data-cat-index="${escapeHtml(
+              category.id
+            )}">
 
-    <button
-      class="cat-index-btn"
-      data-cat="${c.id}">
+            <span>
+              ${escapeHtml(
+                category.name
+              )}
+            </span>
 
-      <span>${c.name || ""}</span>
+            <span class="cat-index-en">
+              ${escapeHtml(
+                category.nameEn
+              )}
+            </span>
 
-      ${
-        c.nameEn
-          ? `<span class="cat-index-en">${c.nameEn}</span>`
-          : ""
-      }
-
-    </button>
-
-  `).join("");
+          </button>
+        `
+      )
+      .join("");
 
 
-  $$(".cat-index-btn").forEach(btn=>{
+  container
+    .querySelectorAll(
+      "[data-cat-index]"
+    )
+    .forEach(button => {
 
-    btn.addEventListener("click",()=>{
+      button.addEventListener(
+        "click",
+        () => {
 
-      goToPage("feed");
+          goToPage("feed");
 
-      setTimeout(()=>{
-        scrollToCategory(btn.dataset.cat);
-      },60);
+          setTimeout(
+            () => {
+
+              scrollToCategory(
+                button.dataset.catIndex
+              );
+
+            },
+            50
+          );
+
+        }
+      );
 
     });
 
-  });
+
+  renderCategoriesFooter();
 
 }
 
 
 /* ================================================================
-   تماس پایین صفحه
+   FEED
 ================================================================ */
 
-function renderCategoriesFooter(){
+function renderFeed() {
 
-  if(!SETTINGS) return;
+  const tabs =
+    $("#feedTabs");
 
-  const phone =
-    SETTINGS.contact?.phone || "";
+  const feed =
+    $("#feedList");
 
-  const phoneEl =
-    $("#ctPhoneCall");
-
-  if(phoneEl){
-
-    phoneEl.href =
-      "tel:" +
-      phone.replace(/[^0-9+]/g,"");
-
+  if (!tabs || !feed) {
+    return;
   }
 
-}
 
+  if (!CATEGORIES.length) {
 
-/* ================================================================
-   صفحه فید آیتم‌ها
-================================================================ */
+    tabs.innerHTML = "";
 
-function renderFeed(){
-
-  const tabsWrap = $("#feedTabs");
-  const feedWrap = $("#feedList");
-
-  if(!tabsWrap || !feedWrap) return;
-
-
-  if(!CATEGORIES.length){
-
-    tabsWrap.innerHTML = "";
-
-    feedWrap.innerHTML = `
+    feed.innerHTML = `
       <p class="empty-note">
-        هنوز آیتمی ثبت نشده.
+        هنوز دسته‌بندی‌ای ثبت نشده.
       </p>
     `;
 
@@ -360,140 +593,204 @@ function renderFeed(){
   }
 
 
-  tabsWrap.innerHTML = CATEGORIES.map((c,i)=>`
-
-    <button
-      class="feed-tab ${i===0 ? "active" : ""}"
-      data-cat="${c.id}">
-
-      ${c.name || ""}
-
-    </button>
-
-  `).join("");
-
-
-  feedWrap.innerHTML = CATEGORIES.map(c=>{
-
-    const items =
-      ITEMS.filter(it =>
-        it.categoryId === c.id &&
-        it.available !== false
-      );
-
-
-    if(!items.length) return "";
-
-
-    return `
-
-      <section
-        class="feed-section"
-        id="cat-${c.id}">
-
-        <div class="cactus-row">
-          ${cactusDeco()}
-          ${cactusDeco("small")}
-          ${cactusDeco()}
-        </div>
-
-
-        ${items.map(it=>`
-
-          <article class="feed-card">
-
-            ${
-              it.isNew
-                ? '<span class="badge-new feed-new">جدید</span>'
+  tabs.innerHTML =
+    CATEGORIES
+      .map(
+        (category, index) => `
+          <button
+            class="feed-tab ${
+              index === 0
+                ? "active"
                 : ""
-            }
+            }"
+            data-cat="${escapeHtml(
+              category.id
+            )}">
+
+            ${escapeHtml(
+              category.name
+            )}
+
+          </button>
+        `
+      )
+      .join("");
 
 
-            <div class="feed-photo">
-
-              ${
-                it.image
-                  ? `<img src="${it.image}" alt="${it.title || ""}">`
-                  : `<span class="feed-emoji">🌵</span>`
-              }
-
-            </div>
+  let html = "";
 
 
-            ${
-              it.subtitle
-                ? `<div class="feed-sub">${it.subtitle}</div>`
-                : ""
-            }
+  CATEGORIES.forEach(
+    category => {
+
+      const items =
+        ITEMS.filter(
+          item =>
+            item.categoryId ===
+              category.id &&
+            item.available !== false
+        );
 
 
-            <h3 class="feed-title">
-              ${it.title || ""}
-            </h3>
+      if (!items.length) {
+        return;
+      }
 
 
-            <p class="feed-desc">
-              ${it.desc || ""}
-            </p>
+      html += `
+        <section
+          class="feed-section"
+          id="cat-${escapeHtml(
+            category.id
+          )}">
+
+          <div class="cactus-row">
+            ${cactusDeco()}
+            ${cactusDeco("small")}
+            ${cactusDeco()}
+          </div>
+
+          ${items
+            .map(
+              item => `
+                <article class="feed-card">
+
+                  ${
+                    item.isNew
+                      ? `
+                        <span class="badge-new feed-new">
+                          جدید
+                        </span>
+                      `
+                      : ""
+                  }
+
+                  <div class="feed-photo">
+
+                    ${
+                      item.image
+                        ? `
+                          <img
+                            src="${escapeHtml(
+                              item.image
+                            )}"
+                            alt="${escapeHtml(
+                              item.title
+                            )}">
+                        `
+                        : `
+                          <span class="feed-emoji">
+                            🌵
+                          </span>
+                        `
+                    }
+
+                  </div>
+
+                  ${
+                    item.subtitle
+                      ? `
+                        <div class="feed-sub">
+                          ${escapeHtml(
+                            item.subtitle
+                          )}
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  <h3 class="feed-title">
+                    ${escapeHtml(
+                      item.title
+                    )}
+                  </h3>
+
+                  ${
+                    item.desc
+                      ? `
+                        <p class="feed-desc">
+                          ${escapeHtml(
+                            item.desc
+                          )}
+                        </p>
+                      `
+                      : ""
+                  }
+
+                  <span class="price-badge">
+                    ${escapeHtml(
+                      item.price
+                    )}
+                  </span>
+
+                </article>
+              `
+            )
+            .join("")}
+
+        </section>
+      `;
+
+    }
+  );
 
 
-            <span class="price-badge">
-              ${it.price || ""}
-            </span>
+  if (!html) {
 
-          </article>
-
-        `).join("")}
-
-      </section>
-
+    html = `
+      <p class="empty-note">
+        هنوز آیتمی ثبت نشده.
+      </p>
     `;
 
-  }).join("") + `
-
-    <div class="cactus-row">
-      ${cactusDeco()}
-      ${cactusDeco("small")}
-      ${cactusDeco()}
-    </div>
+  }
 
 
-    <div class="touch-card">
+  feed.innerHTML =
+    html +
+    `
+      <div class="cactus-row">
+        ${cactusDeco()}
+        ${cactusDeco("small")}
+        ${cactusDeco()}
+      </div>
 
-      <h4>در تماس باشید</h4>
+      <div class="touch-card">
+        <h4>در تماس باشید</h4>
 
-      <p>
-        اگر سوالی داری یا به کمک نیاز داری، تماس بگیر.
-      </p>
+        <p>
+          اگر سوالی داری یا به کمک نیاز داری، تماس بگیر.
+        </p>
 
-      <a
-        id="ctPhoneCall"
-        class="pill-btn"
-        href="tel:">
+        <a
+          id="ctPhoneCall"
+          class="pill-btn"
+          href="tel:">
+          تماس بگیر
+        </a>
 
-        تماس بگیر
-
-      </a>
-
-    </div>
-
-  `;
+      </div>
+    `;
 
 
-  $$(".feed-tab").forEach(tab=>{
+  $$(".feed-tab")
+    .forEach(tab => {
 
-    tab.addEventListener("click",()=>{
+      tab.addEventListener(
+        "click",
+        () => {
 
-      scrollToCategory(
-        tab.dataset.cat
+          scrollToCategory(
+            tab.dataset.cat
+          );
+
+        }
       );
 
     });
 
-  });
 
-
-  renderCategoriesFooter();
+  updatePhoneButton();
 
   setupScrollSpy();
 
@@ -501,89 +798,107 @@ function renderFeed(){
 
 
 /* ================================================================
-   اسکرول به دسته
+   CATEGORY SCROLL
 ================================================================ */
 
-function scrollToCategory(catId){
+function scrollToCategory(categoryId) {
 
-  const el =
-    $("#cat-" + catId);
+  const element =
+    document.getElementById(
+      "cat-" + categoryId
+    );
 
-  if(!el) return;
+  if (!element) return;
 
 
   const y =
-    el.getBoundingClientRect().top +
+    element.getBoundingClientRect()
+      .top +
     window.scrollY -
     118;
 
 
   window.scrollTo({
-    top:y,
-    behavior:"smooth"
+    top: y,
+    behavior: "smooth"
   });
 
 }
 
 
 /* ================================================================
-   Scroll Spy
+   SCROLL SPY
 ================================================================ */
 
-function setupScrollSpy(){
+function setupScrollSpy() {
 
   const sections =
     $$(".feed-section");
 
-  if(!sections.length) return;
+  if (!sections.length) return;
 
 
-  const obs =
+  if (
+    !("IntersectionObserver" in window)
+  ) {
+    return;
+  }
+
+
+  const observer =
     new IntersectionObserver(
-      (entries)=>{
+      entries => {
 
-        entries.forEach(entry=>{
+        entries.forEach(
+          entry => {
 
-          if(entry.isIntersecting){
+            if (!entry.isIntersecting) {
+              return;
+            }
 
             const id =
-              entry.target.id.replace("cat-","");
-
-
-            $$(".feed-tab").forEach(t=>{
-
-              t.classList.toggle(
-                "active",
-                t.dataset.cat === id
+              entry.target.id.replace(
+                "cat-",
+                ""
               );
 
-            });
+
+            $$(".feed-tab")
+              .forEach(tab => {
+
+                tab.classList.toggle(
+                  "active",
+                  tab.dataset.cat === id
+                );
+
+              });
 
           }
-
-        });
+        );
 
       },
       {
-        rootMargin:"-40% 0px -50% 0px"
+        rootMargin:
+          "-40% 0px -50% 0px"
       }
     );
 
 
   sections.forEach(
-    s => obs.observe(s)
+    section =>
+      observer.observe(section)
   );
 
 }
 
 
 /* ================================================================
-   صفحه درباره ما
+   ABOUT
 ================================================================ */
 
-function renderAbout(){
+function renderAbout() {
 
-  if(!SETTINGS) return;
+  if (!SETTINGS) return;
 
 
   const title =
@@ -599,51 +914,68 @@ function renderAbout(){
     $("#valueGrid");
 
 
-  if(title){
-
+  if (title) {
     title.textContent =
       SETTINGS.aboutTitle || "";
-
   }
 
 
-  if(intro){
-
+  if (intro) {
     intro.textContent =
       SETTINGS.aboutIntro || "";
-
   }
 
 
-  if(body){
+  if (body) {
 
     body.innerHTML =
-      (SETTINGS.aboutBody || [])
-        .map(p=>`<p>${p}</p>`)
-        .join("");
+      Array.isArray(
+        SETTINGS.aboutBody
+      )
+        ? SETTINGS.aboutBody
+            .map(
+              text =>
+                `<p>${escapeHtml(
+                  text
+                )}</p>`
+            )
+            .join("")
+        : "";
 
   }
 
 
-  if(values){
+  if (values) {
+
+    const list =
+      Array.isArray(
+        SETTINGS.values
+      )
+        ? SETTINGS.values
+        : [];
+
 
     values.innerHTML =
-      (SETTINGS.values || [])
-        .map(v=>`
+      list
+        .map(
+          value => `
+            <div class="value-card">
 
-          <div class="value-card">
+              <div class="ico">
+                ${escapeHtml(
+                  value.icon || "🌵"
+                )}
+              </div>
 
-            <div class="ico">
-              ${v.icon || ""}
+              <div class="lbl">
+                ${escapeHtml(
+                  value.label || ""
+                )}
+              </div>
+
             </div>
-
-            <div class="lbl">
-              ${v.label || ""}
-            </div>
-
-          </div>
-
-        `)
+          `
+        )
         .join("");
 
   }
@@ -652,237 +984,316 @@ function renderAbout(){
 
 
 /* ================================================================
-   صفحه تماس با ما
+   CONTACT
 ================================================================ */
 
-function renderContact(){
+function renderContact() {
 
-  if(!SETTINGS) return;
+  if (!SETTINGS) return;
 
 
-  const c =
+  const contact =
     SETTINGS.contact || {};
 
 
   const address =
     $("#cAddress");
 
-  if(address){
-
+  if (address) {
     address.textContent =
-      c.address || "-";
-
+      contact.address || "-";
   }
 
 
-  const phoneEl =
+  const phone =
     $("#cPhoneVal");
 
+  if (phone) {
 
-  if(phoneEl){
+    phone.textContent =
+      contact.phone || "-";
 
-    phoneEl.textContent =
-      c.phone || "-";
-
-    phoneEl.href =
-      "tel:" +
-      (c.phone || "")
-        .replace(/[^0-9+]/g,"");
+    phone.href =
+      contact.phone
+        ? "tel:" +
+          contact.phone.replace(
+            /[^0-9+]/g,
+            ""
+          )
+        : "#";
 
   }
 
 
-  const hoursTable =
+  const table =
     $("#hoursTable");
 
+  if (table) {
 
-  if(hoursTable){
+    const hours =
+      Array.isArray(
+        SETTINGS.hours
+      )
+        ? SETTINGS.hours
+        : [];
 
-    hoursTable.innerHTML =
-      (SETTINGS.hours || [])
-        .map(h=>`
 
-          <tr>
+    table.innerHTML =
+      hours
+        .map(
+          hour => `
+            <tr>
+              <td>
+                ${escapeHtml(
+                  hour.days || ""
+                )}
+              </td>
 
-            <td>
-              ${h.days || ""}
-            </td>
-
-            <td>
-              ${h.time || ""}
-            </td>
-
-          </tr>
-
-        `)
+              <td>
+                ${escapeHtml(
+                  hour.time || ""
+                )}
+              </td>
+            </tr>
+          `
+        )
         .join("");
 
   }
 
 
-  const socials = [];
-
-
-  if(c.instagram){
-
-    socials.push({
-      label:"اینستاگرام",
-      url:c.instagram
-    });
-
-  }
-
-
-  if(c.whatsapp){
-
-    socials.push({
-      label:"واتساپ",
-      url:c.whatsapp
-    });
-
-  }
-
-
-  if(c.mapUrl){
-
-    socials.push({
-      label:"مسیر روی نقشه",
-      url:c.mapUrl
-    });
-
-  }
-
-
-  const socialRow =
+  const social =
     $("#socialRow");
 
+  if (social) {
 
-  if(socialRow){
+    const links = [];
 
-    socialRow.innerHTML =
-      socials.map(s=>`
 
-        <a
-          class="pill-btn"
-          style="flex:1;"
-          href="${s.url}"
-          target="_blank"
-          rel="noopener">
+    if (contact.instagram) {
 
-          ${s.label}
+      links.push({
+        label: "اینستاگرام",
+        url: contact.instagram
+      });
 
-        </a>
+    }
 
-      `).join("");
+
+    if (contact.whatsapp) {
+
+      links.push({
+        label: "واتساپ",
+        url: contact.whatsapp
+      });
+
+    }
+
+
+    if (contact.mapUrl) {
+
+      links.push({
+        label: "مسیر روی نقشه",
+        url: contact.mapUrl
+      });
+
+    }
+
+
+    social.innerHTML =
+      links
+        .map(
+          link => `
+            <a
+              class="pill-btn"
+              style="flex:1;"
+              href="${escapeHtml(
+                link.url
+              )}"
+              target="_blank"
+              rel="noopener noreferrer">
+
+              ${escapeHtml(
+                link.label
+              )}
+
+            </a>
+          `
+        )
+        .join("");
 
   }
+
+
+  updatePhoneButton();
 
 }
 
 
 /* ================================================================
-   ناوبری بین صفحات
+   PHONE BUTTON
 ================================================================ */
 
-function goToPage(name){
+function updatePhoneButton() {
+
+  const button =
+    $("#ctPhoneCall");
+
+  if (!button) return;
+
+
+  const phone =
+    SETTINGS?.contact?.phone || "";
+
+
+  if (!phone) {
+
+    button.style.display =
+      "none";
+
+    return;
+
+  }
+
+
+  button.style.display =
+    "block";
+
+  button.href =
+    "tel:" +
+    phone.replace(
+      /[^0-9+]/g,
+      ""
+    );
+
+}
+
+
+/* ================================================================
+   NAVIGATION
+================================================================ */
+
+function goToPage(name) {
 
   $$(".page")
-    .forEach(p =>
-      p.classList.remove("active")
+    .forEach(
+      page =>
+        page.classList.remove(
+          "active"
+        )
     );
 
 
   const page =
     $("#page-" + name);
 
+  if (page) {
 
-  if(page){
-
-    page.classList.add("active");
+    page.classList.add(
+      "active"
+    );
 
   }
 
 
   $$("nav.bottom button")
-    .forEach(b=>{
+    .forEach(
+      button => {
 
-      b.classList.toggle(
-        "active",
-        b.dataset.page === name
-      );
+        button.classList.toggle(
+          "active",
+          button.dataset.page ===
+            name
+        );
 
-    });
+      }
+    );
 
 
   window.scrollTo({
-    top:0
+    top: 0,
+    behavior: "smooth"
   });
 
 }
 
 
 /* ================================================================
-   تنظیم Navigation
+   NAV SETUP
 ================================================================ */
 
-function setupNav(){
+function setupNav() {
 
   $$("[data-goto]")
-    .forEach(el=>{
+    .forEach(
+      element => {
 
-      el.addEventListener(
-        "click",
-        ()=>{
-          goToPage(
-            el.dataset.goto
-          );
-        }
-      );
+        element.addEventListener(
+          "click",
+          () => {
 
-    });
+            goToPage(
+              element.dataset.goto
+            );
+
+          }
+        );
+
+      }
+    );
 
 
   $$("nav.bottom button")
-    .forEach(btn=>{
+    .forEach(
+      button => {
 
-      btn.addEventListener(
-        "click",
-        ()=>{
-          goToPage(
-            btn.dataset.page
-          );
-        }
-      );
+        button.addEventListener(
+          "click",
+          () => {
 
-    });
+            goToPage(
+              button.dataset.page
+            );
+
+          }
+        );
+
+      }
+    );
 
 
-  const feedBackBtn =
+  const back =
     $("#feedBackBtn");
 
+  if (back) {
 
-  if(feedBackBtn){
-
-    feedBackBtn.addEventListener(
+    back.addEventListener(
       "click",
-      ()=>{
-        goToPage("categories");
+      () => {
+
+        goToPage(
+          "categories"
+        );
+
       }
     );
 
   }
 
 
-  const logoHome =
+  const logo =
     $("#logoHome");
 
+  if (logo) {
 
-  if(logoHome){
-
-    logoHome.addEventListener(
+    logo.addEventListener(
       "click",
-      ()=>{
-        goToPage("home");
+      () => {
+
+        goToPage(
+          "home"
+        );
+
       }
     );
 
@@ -892,31 +1303,38 @@ function setupNav(){
 
 
 /* ================================================================
-   Splash
+   SPLASH
 ================================================================ */
 
-window.addEventListener("load",()=>{
+window.addEventListener(
+  "load",
+  () => {
 
-  setTimeout(()=>{
+    setTimeout(
+      () => {
 
-    const splash =
-      $("#splash");
+        const splash =
+          $("#splash");
 
-    if(splash){
+        if (splash) {
 
-      splash.classList.add("hide");
+          splash.classList.add(
+            "hide"
+          );
 
-    }
+        }
 
-  },1300);
+      },
+      1300
+    );
 
-});
+  }
+);
 
 
 /* ================================================================
-   اجرای سایت
+   START
 ================================================================ */
 
 setupNav();
-
 loadData();
