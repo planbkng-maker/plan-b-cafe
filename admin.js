@@ -1,97 +1,160 @@
-/* ================================================================
-   PLAN B — پنل مدیریت
-   Firebase + مدیریت منو + انتشار data.json
-================================================================ */
+/* =========================================================
+   PLAN B - ADMIN PANEL
+   ========================================================= */
 
-const $ = s => document.querySelector(s);
-const $$ = s => document.querySelectorAll(s);
+document.addEventListener("DOMContentLoaded", function () {
 
-let CATEGORIES = [];
-let ITEMS = [];
-let editingItemId = null;
+  console.log("PLAN B ADMIN JS STARTED");
 
+  const $ = (selector) => document.querySelector(selector);
+  const $$ = (selector) => document.querySelectorAll(selector);
 
-/* ================================================================
-   شروع پنل
-================================================================ */
+  let CATEGORIES = [];
+  let ITEMS = [];
+  let editingItemId = null;
 
-document.addEventListener("DOMContentLoaded", () => {
+  /* =========================================================
+     ELEMENTS
+     ========================================================= */
 
-  /* ---------- ورود / خروج ---------- */
+  const loginScreen = $("#loginScreen");
+  const adminApp = $("#adminApp");
 
-  const loginForm = $("#loginForm");
-  const logoutBtn = $("#logoutBtn");
-
-  if (loginForm) {
-    loginForm.addEventListener("submit", e => {
-      e.preventDefault();
-
-      const email = $("#loginEmail").value.trim();
-      const pass = $("#loginPass").value;
-
-      $("#loginError").textContent = "";
-
-      auth.signInWithEmailAndPassword(email, pass)
-        .catch(err => {
-          $("#loginError").textContent =
-            "ورود ناموفق: " + err.message;
-        });
-    });
+  /* اگر صفحه درست لود نشده باشد */
+  if (!loginScreen || !adminApp) {
+    showFatalError(
+      "خطا: ساختار صفحه مدیریت پیدا نشد. لطفاً صفحه admin.html را باز کنید و صفحه را Refresh کنید."
+    );
+    return;
   }
 
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      auth.signOut();
-    });
+  /* =========================================================
+     FIREBASE CHECK
+     ========================================================= */
+
+  if (typeof firebase === "undefined") {
+    showFatalError("Firebase در صفحه بارگذاری نشده است.");
+    return;
   }
 
+  if (typeof auth === "undefined" || typeof db === "undefined") {
+    showFatalError(
+      "Firebase Auth یا Firestore پیدا نشد. فایل firebase-config.js را بررسی کنید."
+    );
+    return;
+  }
 
-  /* ---------- وضعیت ورود ---------- */
+  /* =========================================================
+     AUTH
+     ========================================================= */
 
-  auth.onAuthStateChanged(user => {
-
-    const loginScreen = $("#loginScreen");
-    const adminApp = $("#adminApp");
-
-    if (!loginScreen || !adminApp) {
-      showFatalError(
-        "عناصر loginScreen یا adminApp در صفحه پیدا نشدند."
-      );
-      return;
-    }
-
-    loginScreen.style.display = user ? "none" : "flex";
-    adminApp.style.display = user ? "block" : "none";
+  auth.onAuthStateChanged(function (user) {
 
     if (user) {
+
+      loginScreen.style.display = "none";
+      adminApp.style.display = "block";
+
       loadSettings();
       loadCategories();
       loadItems();
+
+    } else {
+
+      loginScreen.style.display = "flex";
+      adminApp.style.display = "none";
+
     }
 
   });
 
 
-  /* ---------- تب‌های پنل ---------- */
+  /* =========================================================
+     LOGIN
+     ========================================================= */
 
-  $$(".admin-tab").forEach(tab => {
+  const loginForm = $("#loginForm");
 
-    tab.addEventListener("click", () => {
+  if (loginForm) {
 
-      $$(".admin-tab").forEach(t =>
-        t.classList.remove("active")
-      );
+    loginForm.addEventListener("submit", async function (e) {
+
+      e.preventDefault();
+
+      const email = $("#loginEmail")?.value.trim();
+      const password = $("#loginPass")?.value;
+
+      const errorBox = $("#loginError");
+
+      if (errorBox) {
+        errorBox.textContent = "";
+      }
+
+      try {
+
+        await auth.signInWithEmailAndPassword(email, password);
+
+      } catch (error) {
+
+        console.error(error);
+
+        if (errorBox) {
+          errorBox.textContent = firebaseErrorMessage(error);
+        }
+
+      }
+
+    });
+
+  }
+
+
+  /* =========================================================
+     LOGOUT
+     ========================================================= */
+
+  const logoutBtn = $("#logoutBtn");
+
+  if (logoutBtn) {
+
+    logoutBtn.addEventListener("click", async function () {
+
+      try {
+        await auth.signOut();
+      } catch (error) {
+        console.error(error);
+        showToast("خطا در خروج");
+      }
+
+    });
+
+  }
+
+
+  /* =========================================================
+     TABS
+     ========================================================= */
+
+  $$(".admin-tab").forEach(function (tab) {
+
+    tab.addEventListener("click", function () {
+
+      const sectionName = tab.dataset.sec;
+
+      $$(".admin-tab").forEach(t => {
+        t.classList.remove("active");
+      });
 
       tab.classList.add("active");
 
-      $$(".admin-section").forEach(section =>
-        section.classList.remove("active")
-      );
+      document.querySelectorAll(".admin-section").forEach(section => {
+        section.style.display = "none";
+      });
 
-      const target = $("#sec-" + tab.dataset.sec);
+      const target = $("#sec-" + sectionName);
 
       if (target) {
-        target.classList.add("active");
+        target.style.display = "block";
       }
 
     });
@@ -99,1820 +162,1666 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 
-  /* ---------- دکمه انتشار ---------- */
-
-  const publishBtn = $("#publishBtn");
-
-  if (publishBtn) {
-    publishBtn.addEventListener("click", publishData);
-  }
-
-
-  /* ---------- تنظیمات ---------- */
+  /* =========================================================
+     SETTINGS
+     ========================================================= */
 
   const settingsForm = $("#settingsForm");
 
   if (settingsForm) {
-    settingsForm.addEventListener("submit", saveSettings);
+
+    settingsForm.addEventListener("submit", async function (e) {
+
+      e.preventDefault();
+
+      try {
+
+        const settings = collectSettings();
+
+        await db.collection("settings")
+          .doc("main")
+          .set(settings, { merge: true });
+
+        showToast("تنظیمات ذخیره شد ✓");
+
+      } catch (error) {
+
+        console.error(error);
+
+        showToast("خطا در ذخیره تنظیمات");
+
+      }
+
+    });
+
   }
 
 
-  /* ---------- افزودن عکس هیرو ---------- */
+  /* =========================================================
+     HERO IMAGES
+     ========================================================= */
 
   const addHeroImg = $("#addHeroImg");
 
   if (addHeroImg) {
-    addHeroImg.addEventListener("click", () => {
-      const arr = collectListEditor("heroImagesList");
-      addListRow(
-        "heroImagesList",
-        arr,
-        "لینک عکس هیرو"
-      );
+
+    addHeroImg.addEventListener("click", function () {
+
+      addHeroImageRow("");
+
     });
+
   }
 
 
-  /* ---------- افزودن پاراگراف ---------- */
-
-  const addAboutPara = $("#addAboutPara");
-
-  if (addAboutPara) {
-    addAboutPara.addEventListener("click", () => {
-      const arr = collectListEditor("aboutBodyList");
-
-      addListRow(
-        "aboutBodyList",
-        arr,
-        "پاراگراف"
-      );
-    });
-  }
-
-
-  /* ---------- ساعات کاری ---------- */
+  /* =========================================================
+     HOURS
+     ========================================================= */
 
   const addHoursRow = $("#addHoursRow");
 
   if (addHoursRow) {
-    addHoursRow.addEventListener("click", () => {
 
-      const arr = collectHoursEditor();
+    addHoursRow.addEventListener("click", function () {
 
-      arr.push({
-        days: "",
-        time: ""
-      });
+      addHoursRowElement("", "");
 
-      renderHoursEditor(arr);
     });
+
   }
 
 
-  /* ---------- ارزش‌ها ---------- */
+  /* =========================================================
+     ABOUT
+     ========================================================= */
+
+  const addAboutPara = $("#addAboutPara");
+
+  if (addAboutPara) {
+
+    addAboutPara.addEventListener("click", function () {
+
+      addAboutParagraph("");
+
+    });
+
+  }
+
+
+  /* =========================================================
+     VALUES
+     ========================================================= */
 
   const addValueRow = $("#addValueRow");
 
   if (addValueRow) {
-    addValueRow.addEventListener("click", () => {
 
-      const arr = collectValuesEditor();
+    addValueRow.addEventListener("click", function () {
 
-      arr.push({
-        icon: "🌵",
-        label: ""
-      });
+      addValueElement("", "");
 
-      renderValuesEditor(arr);
     });
+
   }
 
 
-  /* ---------- دسته‌بندی جدید ---------- */
+  /* =========================================================
+     CATEGORIES
+     ========================================================= */
 
   const addCatForm = $("#addCatForm");
 
   if (addCatForm) {
-    addCatForm.addEventListener("submit", addCategory);
+
+    addCatForm.addEventListener("submit", async function (e) {
+
+      e.preventDefault();
+
+      const name = $("#newCatName")?.value.trim();
+      const nameEn = $("#newCatNameEn")?.value.trim();
+
+      if (!name) {
+        showToast("نام دسته‌بندی را وارد کنید");
+        return;
+      }
+
+      try {
+
+        const id = createId(name);
+
+        const order =
+          CATEGORIES.length > 0
+            ? Math.max(...CATEGORIES.map(c => Number(c.order || 0))) + 1
+            : 1;
+
+        await db.collection("categories")
+          .doc(id)
+          .set({
+            id,
+            name,
+            nameEn,
+            order
+          });
+
+        $("#newCatName").value = "";
+        $("#newCatNameEn").value = "";
+
+        showToast("دسته‌بندی اضافه شد ✓");
+
+        loadCategories();
+
+      } catch (error) {
+
+        console.error(error);
+
+        showToast("خطا در افزودن دسته‌بندی");
+
+      }
+
+    });
+
   }
 
 
-  /* ---------- آیتم جدید ---------- */
+  /* =========================================================
+     NEW ITEM
+     ========================================================= */
 
   const newItemBtn = $("#newItemBtn");
 
   if (newItemBtn) {
-    newItemBtn.addEventListener("click", () => {
-      openItemForm(null);
+
+    newItemBtn.addEventListener("click", function () {
+
+      openItemModal();
+
     });
+
   }
 
 
-  /* ---------- بستن مودال ---------- */
+  /* =========================================================
+     ITEM FORM
+     ========================================================= */
 
-  const closeItemModal = $("#closeItemModal");
+  const itemForm = $("#itemForm");
 
-  if (closeItemModal) {
-    closeItemModal.addEventListener("click", () => {
-      $("#itemModal").classList.remove("show");
+  if (itemForm) {
+
+    itemForm.addEventListener("submit", async function (e) {
+
+      e.preventDefault();
+
+      await saveItem();
+
     });
+
   }
 
 
-  /* ---------- پیش‌نمایش عکس ---------- */
+  /* =========================================================
+     IMAGE PREVIEW
+     ========================================================= */
 
   const itemImageUrl = $("#itemImageUrl");
 
   if (itemImageUrl) {
 
-    itemImageUrl.addEventListener("input", e => {
+    itemImageUrl.addEventListener("input", function () {
 
-      const url = e.target.value.trim();
-
-      $("#imgPreviewBox").innerHTML = url
-        ? `<img src="${url}" onerror="this.style.display='none'">`
-        : "";
+      updateImagePreview(itemImageUrl.value.trim());
 
     });
 
   }
 
 
-  /* ---------- ذخیره آیتم ---------- */
+  /* =========================================================
+     PUBLISH
+     ========================================================= */
 
-  const itemForm = $("#itemForm");
+  const publishBtn = $("#publishBtn");
 
-  if (itemForm) {
-    itemForm.addEventListener("submit", saveItem);
+  if (publishBtn) {
+
+    publishBtn.addEventListener("click", async function () {
+
+      await publishData();
+
+    });
+
   }
 
 
-  /* ---------- داده نمونه ---------- */
+  /* =========================================================
+     SEED
+     ========================================================= */
 
   const seedBtn = $("#seedBtn");
 
   if (seedBtn) {
-    seedBtn.addEventListener("click", seedData);
-  }
 
-});
+    seedBtn.addEventListener("click", async function () {
 
-
-/* ================================================================
-   تنظیمات
-================================================================ */
-
-function loadSettings() {
-
-  db.collection("settings")
-    .doc("main")
-    .get()
-    .then(doc => {
-
-      const s = doc.exists ? doc.data() : {};
-
-      $("#f-cafeName").value =
-        s.cafeName || "PLAN B";
-
-      $("#f-tagline").value =
-        s.tagline || "";
-
-      $("#f-hoursNote").value =
-        s.hoursNote || "";
-
-      renderListEditor(
-        "heroImagesList",
-        s.heroImages || [],
-        "لینک عکس هیرو"
-      );
-
-      renderHoursEditor(
-        s.hours || []
-      );
-
-      $("#f-aboutTitle").value =
-        s.aboutTitle || "";
-
-      $("#f-aboutIntro").value =
-        s.aboutIntro || "";
-
-      renderListEditor(
-        "aboutBodyList",
-        s.aboutBody || [],
-        "پاراگراف"
-      );
-
-      renderValuesEditor(
-        s.values || []
-      );
-
-      const contact = s.contact || {};
-
-      $("#f-address").value =
-        contact.address || "";
-
-      $("#f-phone").value =
-        contact.phone || "";
-
-      $("#f-instagram").value =
-        contact.instagram || "";
-
-      $("#f-whatsapp").value =
-        contact.whatsapp || "";
-
-      $("#f-mapUrl").value =
-        contact.mapUrl || "";
-
-    })
-    .catch(err => {
-
-      toast(
-        "خطا در دریافت تنظیمات: " + err.message,
-        true
-      );
+      await seedDatabase();
 
     });
-
-}
-
-
-/* ================================================================
-   ذخیره تنظیمات
-================================================================ */
-
-function saveSettings(e) {
-
-  e.preventDefault();
-
-  try {
-
-    const data = {
-
-      cafeName:
-        $("#f-cafeName").value.trim(),
-
-      tagline:
-        $("#f-tagline").value.trim(),
-
-      hoursNote:
-        $("#f-hoursNote").value.trim(),
-
-      heroImages:
-        collectListEditor("heroImagesList"),
-
-      hours:
-        collectHoursEditor(),
-
-      aboutTitle:
-        $("#f-aboutTitle").value.trim(),
-
-      aboutIntro:
-        $("#f-aboutIntro").value.trim(),
-
-      aboutBody:
-        collectListEditor("aboutBodyList"),
-
-      values:
-        collectValuesEditor(),
-
-      contact: {
-
-        address:
-          $("#f-address").value.trim(),
-
-        phone:
-          $("#f-phone").value.trim(),
-
-        instagram:
-          $("#f-instagram").value.trim(),
-
-        whatsapp:
-          $("#f-whatsapp").value.trim(),
-
-        mapUrl:
-          $("#f-mapUrl").value.trim()
-
-      }
-
-    };
-
-    db.collection("settings")
-      .doc("main")
-      .set(data, { merge: true })
-
-      .then(() => {
-
-        toast(
-          "تنظیمات ذخیره شد ✓"
-        );
-
-      })
-
-      .catch(err => {
-
-        toast(
-          "خطا: " + err.message,
-          true
-        );
-
-        showFatalError(
-          "ذخیره تنظیمات: " + err.message
-        );
-
-      });
-
-  } catch (err) {
-
-    showFatalError(
-      "قبل از ذخیره: " + err.message
-    );
-
-  }
-
-}
-
-
-/* ================================================================
-   ویرایشگر لیست‌ها
-================================================================ */
-
-function renderListEditor(
-  containerId,
-  arr,
-  placeholder
-) {
-
-  const c = $("#" + containerId);
-
-  if (!c) return;
-
-  c.innerHTML = arr.map((v, i) => `
-
-    <div class="row-item">
-
-      <input
-        type="text"
-        data-idx="${i}"
-        value="${escAttr(v)}"
-        placeholder="${placeholder}"
-      >
-
-      <button
-        type="button"
-        class="del-row"
-        data-idx="${i}"
-      >✕</button>
-
-    </div>
-
-  `).join("");
-
-  c.querySelectorAll(".del-row")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          arr.splice(
-            Number(button.dataset.idx),
-            1
-          );
-
-          renderListEditor(
-            containerId,
-            arr,
-            placeholder
-          );
-
-        }
-      );
-
-    });
-
-}
-
-
-function collectListEditor(containerId) {
-
-  const c = $("#" + containerId);
-
-  if (!c) return [];
-
-  return [
-    ...c.querySelectorAll("input")
-  ]
-
-    .map(input =>
-      input.value.trim()
-    )
-
-    .filter(Boolean);
-
-}
-
-
-function addListRow(
-  containerId,
-  arr,
-  placeholder
-) {
-
-  arr.push("");
-
-  renderListEditor(
-    containerId,
-    arr,
-    placeholder
-  );
-
-}
-
-
-/* ================================================================
-   ساعات کاری
-================================================================ */
-
-function renderHoursEditor(arr) {
-
-  const c = $("#hoursList");
-
-  if (!c) return;
-
-  c.innerHTML = arr.map((h, i) => `
-
-    <div class="row-item two">
-
-      <input
-        type="text"
-        value="${escAttr(h.days)}"
-        placeholder="مثلا: شنبه تا چهارشنبه"
-        data-f="days"
-      >
-
-      <input
-        type="text"
-        value="${escAttr(h.time)}"
-        placeholder="مثلا: ۹:۰۰ - ۲۳:۰۰"
-        data-f="time"
-      >
-
-      <button
-        type="button"
-        class="del-row"
-        data-idx="${i}"
-      >✕</button>
-
-    </div>
-
-  `).join("");
-
-  c.querySelectorAll(".del-row")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          arr.splice(
-            Number(button.dataset.idx),
-            1
-          );
-
-          renderHoursEditor(arr);
-
-        }
-      );
-
-    });
-
-}
-
-
-function collectHoursEditor() {
-
-  const rows =
-    $$("#hoursList .row-item");
-
-  return [...rows]
-
-    .map(row => ({
-
-      days:
-        row.querySelector(
-          '[data-f="days"]'
-        ).value.trim(),
-
-      time:
-        row.querySelector(
-          '[data-f="time"]'
-        ).value.trim()
-
-    }))
-
-    .filter(h =>
-      h.days || h.time
-    );
-
-}
-
-
-/* ================================================================
-   ارزش‌ها
-================================================================ */
-
-function renderValuesEditor(arr) {
-
-  const c = $("#valuesList");
-
-  if (!c) return;
-
-  c.innerHTML = arr.map((v, i) => `
-
-    <div class="row-item two">
-
-      <input
-        type="text"
-        value="${escAttr(v.icon)}"
-        placeholder="ایموجی مثلا 🌵"
-        data-f="icon"
-        style="max-width:70px;"
-      >
-
-      <input
-        type="text"
-        value="${escAttr(v.label)}"
-        placeholder="عنوان کوتاه"
-        data-f="label"
-      >
-
-      <button
-        type="button"
-        class="del-row"
-        data-idx="${i}"
-      >✕</button>
-
-    </div>
-
-  `).join("");
-
-  c.querySelectorAll(".del-row")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          arr.splice(
-            Number(button.dataset.idx),
-            1
-          );
-
-          renderValuesEditor(arr);
-
-        }
-      );
-
-    });
-
-}
-
-
-function collectValuesEditor() {
-
-  const rows =
-    $$("#valuesList .row-item");
-
-  return [...rows]
-
-    .map(row => ({
-
-      icon:
-        row.querySelector(
-          '[data-f="icon"]'
-        ).value.trim(),
-
-      label:
-        row.querySelector(
-          '[data-f="label"]'
-        ).value.trim()
-
-    }))
-
-    .filter(v => v.label);
-
-}
-
-
-/* ================================================================
-   دسته‌بندی‌ها
-================================================================ */
-
-function loadCategories() {
-
-  db.collection("categories")
-    .orderBy("order", "asc")
-    .onSnapshot(
-
-      snap => {
-
-        CATEGORIES =
-          snap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-
-        renderCategoriesAdmin();
-        fillCategorySelect();
-
-        renderItemsAdmin();
-
-      },
-
-      err => {
-
-        toast(
-          "خطا در دریافت دسته‌بندی‌ها: " +
-          err.message,
-          true
-        );
-
-      }
-
-    );
-
-}
-
-
-function renderCategoriesAdmin() {
-
-  const container =
-    $("#catAdminList");
-
-  if (!container) return;
-
-  container.innerHTML =
-    CATEGORIES.map((c, i) => `
-
-      <div class="admin-cat-row">
-
-        <div class="mv">
-
-          <button
-            data-up="${c.id}"
-            ${i === 0 ? "disabled" : ""}
-          >▲</button>
-
-          <button
-            data-down="${c.id}"
-            ${i === CATEGORIES.length - 1
-              ? "disabled"
-              : ""}
-          >▼</button>
-
-        </div>
-
-        <div class="grow">
-
-          <input
-            type="text"
-            value="${escAttr(c.name)}"
-            data-field="name"
-            data-id="${c.id}"
-            placeholder="نام دسته (فارسی)"
-          >
-
-          <input
-            type="text"
-            value="${escAttr(c.nameEn || "")}"
-            data-field="nameEn"
-            data-id="${c.id}"
-            placeholder="نام دسته (انگلیسی - اختیاری)"
-          >
-
-        </div>
-
-        <button
-          class="save-cat"
-          data-id="${c.id}"
-        >ذخیره</button>
-
-        <button
-          class="del-cat"
-          data-id="${c.id}"
-        >حذف</button>
-
-      </div>
-
-    `).join("")
-
-    || `<p class="empty-note">
-          هنوز دسته‌بندی‌ای نداری.
-       </p>`;
-
-
-  $$(".save-cat")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const id =
-            button.dataset.id;
-
-          const row =
-            button.closest(
-              ".admin-cat-row"
-            );
-
-          const name =
-            row.querySelector(
-              '[data-field="name"]'
-            ).value.trim();
-
-          const nameEn =
-            row.querySelector(
-              '[data-field="nameEn"]'
-            ).value.trim();
-
-          db.collection("categories")
-            .doc(id)
-            .update({
-              name,
-              nameEn
-            })
-
-            .then(() => {
-
-              toast(
-                "دسته‌بندی ذخیره شد ✓"
-              );
-
-            })
-
-            .catch(err => {
-
-              toast(
-                "خطا: " + err.message,
-                true
-              );
-
-            });
-
-        }
-      );
-
-    });
-
-
-  $$(".del-cat")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          if (!confirm(
-            "حذف این دسته‌بندی؟ آیتم‌های داخلش هم از دید مشتری مخفی می‌شوند."
-          )) return;
-
-          db.collection("categories")
-            .doc(button.dataset.id)
-            .delete()
-
-            .then(() => {
-
-              toast("حذف شد ✓");
-
-            })
-
-            .catch(err => {
-
-              toast(
-                "خطا: " + err.message,
-                true
-              );
-
-            });
-
-        }
-      );
-
-    });
-
-
-  $$("[data-up]")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () =>
-          swapOrder(
-            button.dataset.up,
-            -1
-          )
-      );
-
-    });
-
-
-  $$("[data-down]")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () =>
-          swapOrder(
-            button.dataset.down,
-            1
-          )
-      );
-
-    });
-
-}
-
-
-function swapOrder(id, dir) {
-
-  const idx =
-    CATEGORIES.findIndex(
-      c => c.id === id
-    );
-
-  const swapIdx =
-    idx + dir;
-
-  if (
-    idx < 0 ||
-    swapIdx < 0 ||
-    swapIdx >= CATEGORIES.length
-  ) return;
-
-  const a =
-    CATEGORIES[idx];
-
-  const b =
-    CATEGORIES[swapIdx];
-
-  const batch =
-    db.batch();
-
-  batch.update(
-    db.collection("categories").doc(a.id),
-    { order: b.order }
-  );
-
-  batch.update(
-    db.collection("categories").doc(b.id),
-    { order: a.order }
-  );
-
-  batch.commit()
-
-    .then(() => {
-
-      toast(
-        "ترتیب تغییر کرد ✓"
-      );
-
-    })
-
-    .catch(err => {
-
-      toast(
-        "خطا: " + err.message,
-        true
-      );
-
-    });
-
-}
-
-
-function addCategory(e) {
-
-  e.preventDefault();
-
-  const name =
-    $("#newCatName").value.trim();
-
-  const nameEn =
-    $("#newCatNameEn").value.trim();
-
-  if (!name) return;
-
-  const order =
-    CATEGORIES.length
-      ? Math.max(
-          ...CATEGORIES.map(
-            c => c.order || 0
-          )
-        ) + 1
-      : 1;
-
-  db.collection("categories")
-    .add({
-      name,
-      nameEn,
-      order
-    })
-
-    .then(() => {
-
-      $("#newCatName").value = "";
-      $("#newCatNameEn").value = "";
-
-      toast(
-        "دسته‌بندی اضافه شد ✓"
-      );
-
-    })
-
-    .catch(err => {
-
-      toast(
-        "خطا: " + err.message,
-        true
-      );
-
-    });
-
-}
-
-
-/* ================================================================
-   آیتم‌ها
-================================================================ */
-
-function fillCategorySelect() {
-
-  const select =
-    $("#itemCategory");
-
-  if (!select) return;
-
-  select.innerHTML =
-    CATEGORIES.map(c => `
-
-      <option value="${c.id}">
-        ${escAttr(c.name)}
-      </option>
-
-    `).join("");
-
-}
-
-
-function loadItems() {
-
-  db.collection("items")
-    .orderBy("order", "asc")
-    .onSnapshot(
-
-      snap => {
-
-        ITEMS =
-          snap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-
-        renderItemsAdmin();
-
-      },
-
-      err => {
-
-        toast(
-          "خطا در دریافت آیتم‌ها: " +
-          err.message,
-          true
-        );
-
-      }
-
-    );
-
-}
-
-
-function renderItemsAdmin() {
-
-  const wrap =
-    $("#itemsAdminList");
-
-  if (!wrap) return;
-
-  if (!ITEMS.length) {
-
-    wrap.innerHTML =
-      `<p class="empty-note">
-        هنوز آیتمی اضافه نشده.
-       </p>`;
-
-    return;
-
-  }
-
-  wrap.innerHTML =
-    ITEMS.map(it => {
-
-      const catName =
-        CATEGORIES.find(
-          c => c.id === it.categoryId
-        )?.name || "—";
-
-      return `
-
-        <div class="admin-item-row">
-
-          <div class="admin-item-thumb">
-
-            ${
-              it.image
-                ? `<img src="${escAttr(it.image)}">`
-                : "🌵"
-            }
-
-          </div>
-
-          <div class="grow">
-
-            <div class="ai-title">
-
-              ${escAttr(it.title)}
-
-              <span class="ai-cat">
-                ${escAttr(catName)}
-              </span>
-
-            </div>
-
-            <div class="ai-sub">
-
-              ${escAttr(it.price || "")}
-
-              ${
-                it.available === false
-                  ? " · مخفی"
-                  : ""
-              }
-
-            </div>
-
-          </div>
-
-          <button
-            class="edit-item"
-            data-id="${it.id}"
-          >ویرایش</button>
-
-          <button
-            class="del-item"
-            data-id="${it.id}"
-          >حذف</button>
-
-        </div>
-
-      `;
-
-    }).join("");
-
-
-  $$(".edit-item")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () =>
-          openItemForm(
-            button.dataset.id
-          )
-      );
-
-    });
-
-
-  $$(".del-item")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          if (!confirm(
-            "این آیتم حذف شود؟"
-          )) return;
-
-          db.collection("items")
-            .doc(button.dataset.id)
-            .delete()
-
-            .then(() => {
-
-              toast(
-                "آیتم حذف شد ✓"
-              );
-
-            })
-
-            .catch(err => {
-
-              toast(
-                "خطا: " + err.message,
-                true
-              );
-
-            });
-
-        }
-      );
-
-    });
-
-}
-
-
-function openItemForm(id) {
-
-  editingItemId =
-    id || null;
-
-  const item =
-    id
-      ? ITEMS.find(
-          i => i.id === id
-        )
-      : {};
-
-  $("#itemFormTitle").textContent =
-    id
-      ? "ویرایش آیتم"
-      : "افزودن آیتم جدید";
-
-  $("#itemCategory").value =
-    item.categoryId ||
-    CATEGORIES[0]?.id ||
-    "";
-
-  $("#itemTitle").value =
-    item.title || "";
-
-  $("#itemSubtitle").value =
-    item.subtitle || "";
-
-  $("#itemDesc").value =
-    item.desc || "";
-
-  $("#itemPrice").value =
-    item.price || "";
-
-  $("#itemImageUrl").value =
-    item.image || "";
-
-  $("#imgPreviewBox").innerHTML =
-    item.image
-      ? `<img src="${escAttr(item.image)}"
-           onerror="this.style.display='none'">`
-      : "";
-
-  $("#itemIsNew").checked =
-    !!item.isNew;
-
-  $("#itemAvailable").checked =
-    item.available !== false;
-
-  $("#itemModal")
-    .classList
-    .add("show");
-
-}
-
-
-function saveItem(e) {
-
-  e.preventDefault();
-
-  const data = {
-
-    categoryId:
-      $("#itemCategory").value,
-
-    title:
-      $("#itemTitle").value.trim(),
-
-    subtitle:
-      $("#itemSubtitle").value.trim(),
-
-    desc:
-      $("#itemDesc").value.trim(),
-
-    price:
-      $("#itemPrice").value.trim(),
-
-    image:
-      $("#itemImageUrl").value.trim(),
-
-    isNew:
-      $("#itemIsNew").checked,
-
-    available:
-      $("#itemAvailable").checked
-
-  };
-
-
-  const save =
-    editingItemId
-
-      ? db.collection("items")
-          .doc(editingItemId)
-          .update(data)
-
-      : db.collection("items")
-          .add({
-
-            ...data,
-
-            order:
-              ITEMS.length
-                ? Math.max(
-                    ...ITEMS.map(
-                      i => i.order || 0
-                    )
-                  ) + 1
-                : 1
-
-          });
-
-
-  save
-
-    .then(() => {
-
-      $("#itemModal")
-        .classList
-        .remove("show");
-
-      toast(
-        "آیتم ذخیره شد ✓"
-      );
-
-    })
-
-    .catch(err => {
-
-      toast(
-        "خطا: " + err.message,
-        true
-      );
-
-    });
-
-}
-
-
-/* ================================================================
-   داده نمونه
-================================================================ */
-
-async function seedData() {
-
-  if (!confirm(
-    "داده‌ی نمونه اضافه شود؟ (روی داده‌های موجود اثر نمی‌گذارد)"
-  )) return;
-
-  try {
-
-    await db.collection("settings")
-      .doc("main")
-      .set({
-
-        cafeName: "PLAN B",
-
-        tagline:
-          "همیشه یه نقشه‌ی بهتر هست",
-
-        hoursNote:
-          "الان باز هستیم",
-
-        heroImages: [],
-
-        hours: [
-          {
-            days:
-              "شنبه تا چهارشنبه",
-            time:
-              "۹:۰۰ - ۲۳:۰۰"
-          },
-          {
-            days:
-              "پنجشنبه و جمعه",
-            time:
-              "۹:۰۰ - ۲۴:۰۰"
-          }
-        ],
-
-        aboutTitle:
-          "داستان PLAN B",
-
-        aboutIntro:
-          "وقتی نقشه‌ی اول جواب نمیده، یه فنجون قهوه‌ی خوب بهترین نقشه‌ی دومه.",
-
-        aboutBody: [
-          "PLAN B جایی برای آدم‌هایی‌ست که دوست دارن یه‌کم آروم‌تر زندگی کنن.",
-          "ما به کیفیت مواد اولیه و حس خوب فضا اهمیت میدیم."
-        ],
-
-        values: [
-          {
-            icon: "🌱",
-            label: "مواد تازه"
-          },
-          {
-            icon: "☕",
-            label: "قهوه تخصصی"
-          },
-          {
-            icon: "🌵",
-            label: "فضای دنج"
-          }
-        ],
-
-        contact: {
-          address:
-            "تهران، خیابان ...",
-
-          phone:
-            "021-00000000",
-
-          instagram:
-            "https://instagram.com/planb.cafe",
-
-          whatsapp:
-            "",
-
-          mapUrl:
-            "https://maps.google.com"
-        }
-
-      }, { merge: true });
-
-
-    const catRefs = {};
-
-    const categoryNames = [
-      "قهوه",
-      "نوشیدنی سرد",
-      "دسر",
-      "صبحانه"
-    ];
-
-
-    for (
-      const [i, name]
-      of categoryNames.entries()
-    ) {
-
-      const ref =
-        await db.collection("categories")
-          .add({
-
-            name,
-            nameEn: "",
-            order: i + 1
-
-          });
-
-      catRefs[name] =
-        ref.id;
-
-    }
-
-
-    const items = [
-
-      {
-        cat: "قهوه",
-        title: "اسپرسو",
-        desc: "دبل‌شات، طعم غلیظ",
-        price: "۹۵٬۰۰۰ تومان"
-      },
-
-      {
-        cat: "قهوه",
-        title: "لاته",
-        desc: "اسپرسو با شیر بخارداده",
-        price: "۱۲۰٬۰۰۰ تومان"
-      },
-
-      {
-        cat: "دسر",
-        title: "چیزکیک",
-        desc: "با تاپینگ توت قرمز",
-        price: "۱۸۵٬۰۰۰ تومان",
-        isNew: true
-      },
-
-      {
-        cat: "صبحانه",
-        title: "کروسان",
-        desc: "کره‌ای، تازه از فر",
-        price: "۱۴۰٬۰۰۰ تومان"
-      }
-
-    ];
-
-
-    let order = 1;
-
-
-    for (const item of items) {
-
-      await db.collection("items")
-        .add({
-
-          categoryId:
-            catRefs[item.cat],
-
-          title:
-            item.title,
-
-          subtitle:
-            "",
-
-          desc:
-            item.desc,
-
-          price:
-            item.price,
-
-          image:
-            "",
-
-          isNew:
-            !!item.isNew,
-
-          available:
-            true,
-
-          order:
-            order++
-
-        });
-
-    }
-
-
-    toast(
-      "داده‌ی نمونه اضافه شد ✓"
-    );
-
-  } catch (err) {
-
-    toast(
-      "خطا: " + err.message,
-      true
-    );
-
-    showFatalError(
-      "افزودن داده نمونه: " +
-      err.message
-    );
-
-  }
-
-}
-
-
-/* ================================================================
-   انتشار
-   Firebase → data.json
-================================================================ */
-
-async function publishData() {
-
-  const publishBtn =
-    $("#publishBtn");
-
-  if (!auth.currentUser) {
-
-    toast(
-      "ابتدا وارد پنل مدیریت شو.",
-      true
-    );
-
-    return;
 
   }
 
 
-  const originalText =
-    publishBtn
-      ? publishBtn.textContent
-      : "";
+  /* =========================================================
+     LOAD SETTINGS
+     ========================================================= */
 
+  async function loadSettings() {
 
-  try {
+    try {
 
-    if (publishBtn) {
-
-      publishBtn.disabled = true;
-
-      publishBtn.textContent =
-        "در حال آماده‌سازی...";
-
-    }
-
-
-    /* ---------- settings ---------- */
-
-    const settingsSnap =
-      await db.collection("settings")
+      const snap = await db.collection("settings")
         .doc("main")
         .get();
 
+      if (!snap.exists) {
+        console.log("Settings document does not exist.");
+        return;
+      }
 
-    if (!settingsSnap.exists) {
+      const data = snap.data() || {};
 
-      throw new Error(
-        "تنظیمات اصلی پیدا نشد."
-      );
+      setValue("f-cafeName", data.cafeName);
+      setValue("f-tagline", data.tagline);
+      setValue("f-hoursNote", data.hoursNote);
 
-    }
+      setValue("f-aboutTitle", data.aboutTitle);
+      setValue("f-aboutIntro", data.aboutIntro);
 
+      setValue("f-address", data.contact?.address);
+      setValue("f-phone", data.contact?.phone);
+      setValue("f-instagram", data.contact?.instagram);
+      setValue("f-whatsapp", data.contact?.whatsapp);
+      setValue("f-mapUrl", data.contact?.mapUrl);
 
-    const settings =
-      settingsSnap.data();
+      renderHeroImages(data.heroImages || []);
+      renderHours(data.hours || []);
+      renderAboutBody(data.aboutBody || []);
+      renderValues(data.values || []);
 
+    } catch (error) {
 
-    /* ---------- categories ---------- */
+      console.error("LOAD SETTINGS ERROR:", error);
 
-    const categoriesSnap =
-      await db.collection("categories")
-        .orderBy("order", "asc")
-        .get();
-
-
-    const categories =
-      categoriesSnap.docs.map(doc => ({
-
-        id: doc.id,
-
-        ...doc.data()
-
-      }));
-
-
-    if (!categories.length) {
-
-      throw new Error(
-        "هیچ دسته‌بندی‌ای وجود ندارد."
-      );
+      showToast("خطا در دریافت تنظیمات");
 
     }
 
-
-    /* ---------- items ---------- */
-
-    const itemsSnap =
-      await db.collection("items")
-        .orderBy("order", "asc")
-        .get();
+  }
 
 
-    const items =
-      itemsSnap.docs.map(doc => ({
+  /* =========================================================
+     COLLECT SETTINGS
+     ========================================================= */
 
-        id: doc.id,
+  function collectSettings() {
 
-        ...doc.data()
+    const heroImages = [];
 
-      }));
+    $$("#heroImagesList input").forEach(input => {
 
+      const value = input.value.trim();
 
-    /* ---------- اعتبارسنجی ---------- */
+      if (value) {
+        heroImages.push(value);
+      }
 
-    const categoryIds =
-      new Set(
-        categories.map(
-          c => c.id
-        )
-      );
-
-
-    const invalidItems =
-      items.filter(item =>
-        !item.categoryId ||
-        !categoryIds.has(
-          item.categoryId
-        )
-      );
+    });
 
 
-    if (invalidItems.length) {
+    const hours = [];
 
-      const names =
-        invalidItems
-          .map(
-            item =>
-              item.title ||
-              item.id
-          )
-          .join("، ");
+    $$("#hoursList .dynamic-row").forEach(row => {
 
+      const inputs = row.querySelectorAll("input");
 
-      throw new Error(
-        "این آیتم‌ها دسته‌بندی معتبر ندارند: " +
-        names
-      );
+      if (inputs.length >= 2) {
 
-    }
-
-
-    categories.forEach(
-      (category, index) => {
-
-        if (
-          category.order === undefined ||
-          category.order === null
-        ) {
-          category.order =
-            index + 1;
-        }
+        hours.push({
+          days: inputs[0].value.trim(),
+          time: inputs[1].value.trim()
+        });
 
       }
-    );
+
+    });
 
 
-    items.forEach(
-      (item, index) => {
+    const aboutBody = [];
 
-        if (
-          item.order === undefined ||
-          item.order === null
-        ) {
-          item.order =
-            index + 1;
-        }
+    $$("#aboutBodyList textarea").forEach(textarea => {
+
+      const value = textarea.value.trim();
+
+      if (value) {
+        aboutBody.push(value);
+      }
+
+    });
+
+
+    const values = [];
+
+    $$("#valuesList .dynamic-row").forEach(row => {
+
+      const inputs = row.querySelectorAll("input");
+
+      if (inputs.length >= 2) {
+
+        values.push({
+          icon: inputs[0].value.trim(),
+          label: inputs[1].value.trim()
+        });
 
       }
-    );
+
+    });
 
 
-    /* ---------- ساخت JSON ---------- */
+    return {
 
-    const exportData = {
+      cafeName: getValue("f-cafeName"),
+      tagline: getValue("f-tagline"),
+      hoursNote: getValue("f-hoursNote"),
 
-      settings,
+      heroImages,
 
-      categories,
+      hours,
 
-      items
+      aboutTitle: getValue("f-aboutTitle"),
+      aboutIntro: getValue("f-aboutIntro"),
+      aboutBody,
+
+      values,
+
+      contact: {
+        address: getValue("f-address"),
+        phone: getValue("f-phone"),
+        instagram: getValue("f-instagram"),
+        whatsapp: getValue("f-whatsapp"),
+        mapUrl: getValue("f-mapUrl")
+      }
 
     };
 
+  }
 
-    const json =
-      JSON.stringify(
-        exportData,
+
+  /* =========================================================
+     CATEGORIES LOAD
+     ========================================================= */
+
+  async function loadCategories() {
+
+    try {
+
+      const snap = await db.collection("categories")
+        .orderBy("order")
+        .get();
+
+      CATEGORIES = [];
+
+      snap.forEach(doc => {
+
+        CATEGORIES.push({
+          id: doc.id,
+          ...doc.data()
+        });
+
+      });
+
+      renderCategories();
+
+      populateItemCategories();
+
+    } catch (error) {
+
+      console.error("LOAD CATEGORIES ERROR:", error);
+
+      showToast("خطا در دریافت دسته‌بندی‌ها");
+
+    }
+
+  }
+
+
+  /* =========================================================
+     RENDER CATEGORIES
+     ========================================================= */
+
+  function renderCategories() {
+
+    const container = $("#catAdminList");
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    CATEGORIES.forEach(category => {
+
+      const row = document.createElement("div");
+
+      row.className = "admin-list-row";
+
+      row.innerHTML = `
+        <div>
+          <strong>${escapeHtml(category.name || "")}</strong>
+          <small>${escapeHtml(category.nameEn || "")}</small>
+        </div>
+
+        <div style="display:flex;gap:6px;">
+          <button class="btn small secondary" data-edit-cat="${category.id}">
+            ویرایش
+          </button>
+
+          <button class="btn small danger" data-delete-cat="${category.id}">
+            حذف
+          </button>
+        </div>
+      `;
+
+      container.appendChild(row);
+
+    });
+
+
+    container.querySelectorAll("[data-delete-cat]").forEach(button => {
+
+      button.addEventListener("click", async function () {
+
+        const id = button.dataset.deleteCat;
+
+        const used = ITEMS.some(item => item.categoryId === id);
+
+        if (used) {
+
+          showToast("این دسته‌بندی دارای آیتم است و قابل حذف نیست.");
+
+          return;
+
+        }
+
+        if (!confirm("این دسته‌بندی حذف شود؟")) return;
+
+        try {
+
+          await db.collection("categories")
+            .doc(id)
+            .delete();
+
+          showToast("دسته‌بندی حذف شد");
+
+          loadCategories();
+
+        } catch (error) {
+
+          console.error(error);
+
+          showToast("خطا در حذف دسته‌بندی");
+
+        }
+
+      });
+
+    });
+
+
+    container.querySelectorAll("[data-edit-cat]").forEach(button => {
+
+      button.addEventListener("click", async function () {
+
+        const id = button.dataset.editCat;
+
+        const category = CATEGORIES.find(c => c.id === id);
+
+        if (!category) return;
+
+        const name = prompt("نام دسته‌بندی:", category.name || "");
+
+        if (name === null) return;
+
+        const nameEn = prompt(
+          "نام انگلیسی:",
+          category.nameEn || ""
+        );
+
+        if (nameEn === null) return;
+
+        try {
+
+          await db.collection("categories")
+            .doc(id)
+            .update({
+              name: name.trim(),
+              nameEn: nameEn.trim()
+            });
+
+          showToast("دسته‌بندی ویرایش شد ✓");
+
+          loadCategories();
+
+        } catch (error) {
+
+          console.error(error);
+
+          showToast("خطا در ویرایش دسته‌بندی");
+
+        }
+
+      });
+
+    });
+
+  }
+
+
+  /* =========================================================
+     LOAD ITEMS
+     ========================================================= */
+
+  async function loadItems() {
+
+    try {
+
+      const snap = await db.collection("items")
+        .orderBy("order")
+        .get();
+
+      ITEMS = [];
+
+      snap.forEach(doc => {
+
+        ITEMS.push({
+          id: doc.id,
+          ...doc.data()
+        });
+
+      });
+
+      renderItems();
+
+    } catch (error) {
+
+      console.error("LOAD ITEMS ERROR:", error);
+
+      showToast("خطا در دریافت آیتم‌ها");
+
+    }
+
+  }
+
+
+  /* =========================================================
+     RENDER ITEMS
+     ========================================================= */
+
+  function renderItems() {
+
+    const container = $("#itemsAdminList");
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    ITEMS.forEach(item => {
+
+      const category = CATEGORIES.find(
+        c => c.id === item.categoryId
+      );
+
+      const categoryName = category
+        ? category.name
+        : "بدون دسته‌بندی";
+
+
+      const row = document.createElement("div");
+
+      row.className = "admin-list-row";
+
+      row.innerHTML = `
+        <div style="display:flex;gap:12px;align-items:center;">
+
+          ${
+            item.image
+              ? `<img src="${escapeAttribute(item.image)}"
+                       style="width:55px;height:55px;object-fit:cover;border-radius:10px;">`
+              : ""
+          }
+
+          <div>
+            <strong>${escapeHtml(item.title || "")}</strong>
+
+            <small>
+              ${escapeHtml(categoryName)}
+              ${item.isNew ? " • جدید" : ""}
+              ${item.available === false ? " • ناموجود" : ""}
+            </small>
+
+            <div>${escapeHtml(item.price || "")}</div>
+          </div>
+
+        </div>
+
+        <div style="display:flex;gap:6px;">
+
+          <button class="btn small secondary"
+                  data-edit-item="${item.id}">
+            ویرایش
+          </button>
+
+          <button class="btn small danger"
+                  data-delete-item="${item.id}">
+            حذف
+          </button>
+
+        </div>
+      `;
+
+      container.appendChild(row);
+
+    });
+
+
+    container.querySelectorAll("[data-edit-item]").forEach(button => {
+
+      button.addEventListener("click", function () {
+
+        const id = button.dataset.editItem;
+
+        const item = ITEMS.find(i => i.id === id);
+
+        if (item) {
+          openItemModal(item);
+        }
+
+      });
+
+    });
+
+
+    container.querySelectorAll("[data-delete-item]").forEach(button => {
+
+      button.addEventListener("click", async function () {
+
+        const id = button.dataset.deleteItem;
+
+        if (!confirm("این آیتم حذف شود؟")) return;
+
+        try {
+
+          await db.collection("items")
+            .doc(id)
+            .delete();
+
+          showToast("آیتم حذف شد");
+
+          loadItems();
+
+        } catch (error) {
+
+          console.error(error);
+
+          showToast("خطا در حذف آیتم");
+
+        }
+
+      });
+
+    });
+
+  }
+
+
+  /* =========================================================
+     OPEN ITEM MODAL
+     ========================================================= */
+
+  function openItemModal(item = null) {
+
+    const modal = $("#itemModal");
+
+    if (!modal) return;
+
+    editingItemId = item?.id || null;
+
+    populateItemCategories();
+
+    setValue("itemTitle", item?.title || "");
+    setValue("itemSubtitle", item?.subtitle || "");
+    setValue("itemDesc", item?.desc || "");
+    setValue("itemPrice", item?.price || "");
+    setValue("itemImageUrl", item?.image || "");
+
+    const categorySelect = $("#itemCategory");
+
+    if (categorySelect) {
+      categorySelect.value = item?.categoryId || "";
+    }
+
+    const isNew = $("#itemIsNew");
+    const available = $("#itemAvailable");
+
+    if (isNew) {
+      isNew.checked = item?.isNew || false;
+    }
+
+    if (available) {
+      available.checked =
+        item?.available !== false;
+    }
+
+    updateImagePreview(item?.image || "");
+
+    modal.style.display = "flex";
+
+  }
+
+
+  /* =========================================================
+     CLOSE MODAL
+     ========================================================= */
+
+  function closeItemModal() {
+
+    const modal = $("#itemModal");
+
+    if (modal) {
+      modal.style.display = "none";
+    }
+
+    editingItemId = null;
+
+  }
+
+
+  /* =========================================================
+     ITEM MODAL CLOSE BUTTONS
+     ========================================================= */
+
+  document.addEventListener("click", function (e) {
+
+    if (
+      e.target.matches(
+        "#itemModal .close, #itemModal [data-close], #itemModal .modal-close"
+      )
+    ) {
+
+      closeItemModal();
+
+    }
+
+  });
+
+
+  /* =========================================================
+     POPULATE CATEGORY SELECT
+     ========================================================= */
+
+  function populateItemCategories() {
+
+    const select = $("#itemCategory");
+
+    if (!select) return;
+
+    const current = select.value;
+
+    select.innerHTML = `
+      <option value="">انتخاب دسته‌بندی</option>
+    `;
+
+    CATEGORIES.forEach(category => {
+
+      const option = document.createElement("option");
+
+      option.value = category.id;
+      option.textContent = category.name;
+
+      select.appendChild(option);
+
+    });
+
+    if (current) {
+      select.value = current;
+    }
+
+  }
+
+
+  /* =========================================================
+     SAVE ITEM
+     ========================================================= */
+
+  async function saveItem() {
+
+    try {
+
+      const title = getValue("itemTitle");
+      const categoryId = getValue("itemCategory");
+
+      if (!title) {
+        showToast("نام آیتم را وارد کنید");
+        return;
+      }
+
+      if (!categoryId) {
+        showToast("دسته‌بندی را انتخاب کنید");
+        return;
+      }
+
+      const categoryExists = CATEGORIES.some(
+        c => c.id === categoryId
+      );
+
+      if (!categoryExists) {
+        showToast("دسته‌بندی انتخاب‌شده معتبر نیست");
+        return;
+      }
+
+      const data = {
+
+        categoryId,
+
+        title,
+
+        subtitle: getValue("itemSubtitle"),
+
+        desc: getValue("itemDesc"),
+
+        price: getValue("itemPrice"),
+
+        image: getValue("itemImageUrl"),
+
+        isNew: $("#itemIsNew")?.checked || false,
+
+        available:
+          $("#itemAvailable")
+            ? $("#itemAvailable").checked
+            : true
+
+      };
+
+
+      if (editingItemId) {
+
+        await db.collection("items")
+          .doc(editingItemId)
+          .update(data);
+
+        showToast("آیتم ویرایش شد ✓");
+
+      } else {
+
+        const order =
+          ITEMS.length > 0
+            ? Math.max(...ITEMS.map(i => Number(i.order || 0))) + 1
+            : 1;
+
+        data.order = order;
+
+        const id = createId(title);
+
+        await db.collection("items")
+          .doc(id)
+          .set({
+            id,
+            ...data
+          });
+
+        showToast("آیتم اضافه شد ✓");
+
+      }
+
+      closeItemModal();
+
+      loadItems();
+
+    } catch (error) {
+
+      console.error("SAVE ITEM ERROR:", error);
+
+      showToast("خطا در ذخیره آیتم");
+
+    }
+
+  }
+
+
+  /* =========================================================
+     PUBLISH DATA.JSON
+     ========================================================= */
+
+  async function publishData() {
+
+    try {
+
+      showToast("در حال آماده‌سازی فایل data.json...");
+
+      const settingsSnap = await db.collection("settings")
+        .doc("main")
+        .get();
+
+      const categoriesSnap = await db.collection("categories")
+        .orderBy("order")
+        .get();
+
+      const itemsSnap = await db.collection("items")
+        .orderBy("order")
+        .get();
+
+
+      const settings = settingsSnap.exists
+        ? settingsSnap.data()
+        : {};
+
+
+      const categories = [];
+
+      categoriesSnap.forEach(doc => {
+
+        categories.push({
+          id: doc.id,
+          ...doc.data()
+        });
+
+      });
+
+
+      const items = [];
+
+      itemsSnap.forEach(doc => {
+
+        items.push({
+          id: doc.id,
+          ...doc.data()
+        });
+
+      });
+
+
+      /* بررسی دسته‌بندی آیتم‌ها */
+
+      const categoryIds = new Set(
+        categories.map(category => category.id)
+      );
+
+      const invalidItems = items.filter(
+        item => !categoryIds.has(item.categoryId)
+      );
+
+
+      if (invalidItems.length > 0) {
+
+        const names = invalidItems
+          .map(item => item.title || item.id)
+          .join("، ");
+
+        showToast(
+          "خطا: بعضی آیتم‌ها دسته‌بندی معتبر ندارند: " + names
+        );
+
+        return;
+
+      }
+
+
+      const output = {
+
+        settings,
+
+        categories,
+
+        items
+
+      };
+
+
+      const json = JSON.stringify(
+        output,
         null,
         2
       );
 
 
-    /* ---------- دانلود ---------- */
-
-    const blob =
-      new Blob(
+      const blob = new Blob(
         [json],
         {
-          type:
-            "application/json;charset=utf-8"
+          type: "application/json;charset=utf-8"
         }
       );
 
 
-    const url =
-      URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
 
+      const link = document.createElement("a");
 
-    const a =
-      document.createElement("a");
+      link.href = url;
 
-    a.href = url;
+      link.download = "data.json";
 
-    a.download =
-      "data.json";
+      document.body.appendChild(link);
 
+      link.click();
 
-    document.body.appendChild(a);
+      link.remove();
 
-    a.click();
-
-    document.body.removeChild(a);
-
-
-    setTimeout(() => {
       URL.revokeObjectURL(url);
-    }, 1000);
 
 
-    toast(
-      "data.json آماده شد ✓"
-    );
+      showToast(
+        "data.json آماده شد ✓ فایل را در GitHub جایگزین کنید."
+      );
 
+    } catch (error) {
 
-    if (publishBtn) {
+      console.error("PUBLISH ERROR:", error);
 
-      publishBtn.textContent =
-        "دانلود شد ✓";
-
-      setTimeout(() => {
-
-        publishBtn.textContent =
-          originalText;
-
-      }, 2500);
-
-    }
-
-
-  } catch (err) {
-
-    console.error(
-      "Publish error:",
-      err
-    );
-
-
-    toast(
-      "انتشار ناموفق: " +
-      (err.message ||
-        "خطای نامشخص"),
-      true
-    );
-
-
-    showFatalError(
-      "انتشار داده‌ها: " +
-      (err.message ||
-        "خطای نامشخص")
-    );
-
-
-  } finally {
-
-    if (publishBtn) {
-
-      publishBtn.disabled =
-        false;
+      showToast(
+        "خطا در ساخت data.json"
+      );
 
     }
 
   }
 
-}
+
+  /* =========================================================
+     SEED DATABASE
+     ========================================================= */
+
+  async function seedDatabase() {
+
+    if (
+      !confirm(
+        "اطلاعات نمونه به Firebase اضافه شود؟"
+      )
+    ) {
+      return;
+    }
+
+    try {
+
+      const categories = [
+
+        {
+          id: "coffee",
+          name: "قهوه",
+          nameEn: "Coffee",
+          order: 1
+        },
+
+        {
+          id: "cold-drinks",
+          name: "نوشیدنی سرد",
+          nameEn: "Cold Drinks",
+          order: 2
+        },
+
+        {
+          id: "dessert",
+          name: "دسر",
+          nameEn: "Dessert",
+          order: 3
+        },
+
+        {
+          id: "breakfast",
+          name: "صبحانه",
+          nameEn: "Breakfast",
+          order: 4
+        }
+
+      ];
 
 
-/* ================================================================
-   ابزارها
-================================================================ */
+      for (const category of categories) {
 
-function escAttr(v) {
+        await db.collection("categories")
+          .doc(category.id)
+          .set(category);
 
-  return (v ?? "")
-    .toString()
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-}
+      }
 
 
-function toast(msg, isError) {
+      const items = [
 
-  const t =
-    $("#toast");
+        {
+          id: "espresso",
+          categoryId: "coffee",
+          title: "اسپرسو",
+          subtitle: "",
+          desc: "دبل‌شات، طعم غلیظ",
+          price: "۹۵٬۰۰۰ تومان",
+          image: "",
+          isNew: false,
+          available: true,
+          order: 1
+        },
 
-  if (!t) return;
+        {
+          id: "latte",
+          categoryId: "coffee",
+          title: "لاته",
+          subtitle: "",
+          desc: "اسپرسو با شیر بخارداده",
+          price: "۱۲۰٬۰۰۰ تومان",
+          image: "",
+          isNew: false,
+          available: true,
+          order: 2
+        },
 
-  t.textContent =
-    msg;
+        {
+          id: "cheesecake",
+          categoryId: "dessert",
+          title: "چیزکیک",
+          subtitle: "",
+          desc: "با تاپینگ توت قرمز",
+          price: "۱۸۵٬۰۰۰ تومان",
+          image: "",
+          isNew: true,
+          available: true,
+          order: 3
+        },
 
-  t.className =
-    "show" +
-    (isError
-      ? " error"
-      : "");
+        {
+          id: "croissant",
+          categoryId: "breakfast",
+          title: "کروسان",
+          subtitle: "",
+          desc: "کره‌ای، تازه از فر",
+          price: "۱۴۰٬۰۰۰ تومان",
+          image: "",
+          isNew: false,
+          available: true,
+          order: 4
+        }
 
-  setTimeout(() => {
+      ];
 
-    t.className = "";
 
-  }, 2500);
+      for (const item of items) {
 
-}
+        await db.collection("items")
+          .doc(item.id)
+          .set(item);
+
+      }
+
+
+      await db.collection("settings")
+        .doc("main")
+        .set({
+
+          cafeName: "PLAN B",
+
+          tagline: "همیشه یه نقشه‌ی بهتر هست",
+
+          hoursNote: "الان باز هستیم",
+
+          heroImages: [],
+
+          hours: [
+            {
+              days: "شنبه تا چهارشنبه",
+              time: "۹:۰۰ - ۲۳:۰۰"
+            },
+            {
+              days: "پنجشنبه و جمعه",
+              time: "۹:۰۰ - ۲۴:۰۰"
+            }
+          ],
+
+          aboutTitle: "داستان PLAN B",
+
+          aboutIntro:
+            "وقتی نقشه‌ی اول جواب نمیده، یه فنجون قهوه‌ی خوب بهترین نقشه‌ی دومه.",
+
+          aboutBody: [
+            "PLAN B جایی برای آدم‌هایی‌ست که دوست دارن یه‌کم آروم‌تر زندگی کنن.",
+            "ما به کیفیت مواد اولیه و حس خوب فضا اهمیت میدیم."
+          ],
+
+          values: [
+            {
+              icon: "🌱",
+              label: "مواد تازه"
+            },
+            {
+              icon: "☕",
+              label: "قهوه تخصصی"
+            },
+            {
+              icon: "🌵",
+              label: "فضای دنج"
+            }
+          ],
+
+          contact: {
+            address: "تهران، خیابان ...",
+            phone: "021-00000000",
+            instagram: "https://instagram.com/planb.cafe",
+            whatsapp: "",
+            mapUrl: "https://maps.google.com"
+          }
+
+        }, { merge: true });
+
+
+      showToast(
+        "اطلاعات نمونه با موفقیت ساخته شد ✓"
+      );
+
+      loadCategories();
+      loadItems();
+      loadSettings();
+
+    } catch (error) {
+
+      console.error("SEED ERROR:", error);
+
+      showToast(
+        "خطا در ساخت اطلاعات نمونه"
+      );
+
+    }
+
+  }
+
+
+  /* =========================================================
+     DYNAMIC SETTINGS UI
+     ========================================================= */
+
+  function renderHeroImages(images) {
+
+    const container = $("#heroImagesList");
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    images.forEach(image => {
+      addHeroImageRow(image);
+    });
+
+  }
+
+
+  function addHeroImageRow(value) {
+
+    const container = $("#heroImagesList");
+
+    if (!container) return;
+
+    const row = document.createElement("div");
+
+    row.className = "dynamic-row";
+
+    row.innerHTML = `
+      <input
+        type="url"
+        value="${escapeAttribute(value)}"
+        placeholder="URL تصویر"
+      >
+
+      <button type="button"
+              class="btn small danger">
+        حذف
+      </button>
+    `;
+
+    row.querySelector("button")
+      .addEventListener("click", () => row.remove());
+
+    container.appendChild(row);
+
+  }
+
+
+  function renderHours(hours) {
+
+    const container = $("#hoursList");
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    hours.forEach(hour => {
+
+      addHoursRowElement(
+        hour.days || "",
+        hour.time || ""
+      );
+
+    });
+
+  }
+
+
+  function addHoursRowElement(days, time) {
+
+    const container = $("#hoursList");
+
+    if (!container) return;
+
+    const row = document.createElement("div");
+
+    row.className = "dynamic-row";
+
+    row.innerHTML = `
+      <input
+        type="text"
+        value="${escapeAttribute(days)}"
+        placeholder="روزها"
+      >
+
+      <input
+        type="text"
+        value="${escapeAttribute(time)}"
+        placeholder="ساعت"
+      >
+
+      <button type="button"
+              class="btn small danger">
+        حذف
+      </button>
+    `;
+
+    row.querySelector("button")
+      .addEventListener("click", () => row.remove());
+
+    container.appendChild(row);
+
+  }
+
+
+  function renderAboutBody(paragraphs) {
+
+    const container = $("#aboutBodyList");
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    paragraphs.forEach(text => {
+
+      addAboutParagraph(text);
+
+    });
+
+  }
+
+
+  function addAboutParagraph(text) {
+
+    const container = $("#aboutBodyList");
+
+    if (!container) return;
+
+    const row = document.createElement("div");
+
+    row.className = "dynamic-row";
+
+    row.innerHTML = `
+      <textarea
+        rows="3"
+        placeholder="متن پاراگراف"
+      >${escapeHtml(text)}</textarea>
+
+      <button type="button"
+              class="btn small danger">
+        حذف
+      </button>
+    `;
+
+    row.querySelector("button")
+      .addEventListener("click", () => row.remove());
+
+    container.appendChild(row);
+
+  }
+
+
+  function renderValues(values) {
+
+    const container = $("#valuesList");
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    values.forEach(value => {
+
+      addValueElement(
+        value.icon || "",
+        value.label || ""
+      );
+
+    });
+
+  }
+
+
+  function addValueElement(icon, label) {
+
+    const container = $("#valuesList");
+
+    if (!container) return;
+
+    const row = document.createElement("div");
+
+    row.className = "dynamic-row";
+
+    row.innerHTML = `
+      <input
+        type="text"
+        value="${escapeAttribute(icon)}"
+        placeholder="آیکون"
+      >
+
+      <input
+        type="text"
+        value="${escapeAttribute(label)}"
+        placeholder="عنوان"
+      >
+
+      <button type="button"
+              class="btn small danger">
+        حذف
+      </button>
+    `;
+
+    row.querySelector("button")
+      .addEventListener("click", () => row.remove());
+
+    container.appendChild(row);
+
+  }
+
+
+  /* =========================================================
+     IMAGE PREVIEW
+     ========================================================= */
+
+  function updateImagePreview(url) {
+
+    const box = $("#imgPreviewBox");
+
+    if (!box) return;
+
+    if (!url) {
+
+      box.innerHTML = "";
+
+      return;
+
+    }
+
+    box.innerHTML = `
+      <img
+        src="${escapeAttribute(url)}"
+        style="max-width:180px;max-height:180px;border-radius:12px;object-fit:cover;"
+        onerror="this.parentElement.innerHTML='<small>تصویر قابل نمایش نیست</small>'"
+      >
+    `;
+
+  }
+
+
+  /* =========================================================
+     HELPERS
+     ========================================================= */
+
+  function getValue(id) {
+
+    const element = document.getElementById(id);
+
+    return element
+      ? element.value.trim()
+      : "";
+
+  }
+
+
+  function setValue(id, value) {
+
+    const element = document.getElementById(id);
+
+    if (element) {
+      element.value = value || "";
+    }
+
+  }
+
+
+  function createId(text) {
+
+    return text
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^\w\u0600-\u06FF-]/g, "")
+      .replace(/-+/g, "-")
+      .substring(0, 50)
+      + "-" +
+      Math.random()
+        .toString(36)
+        .substring(2, 7);
+
+  }
+
+
+  function escapeHtml(value) {
+
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  }
+
+
+  function escapeAttribute(value) {
+
+    return escapeHtml(value);
+
+  }
+
+
+  function showToast(message) {
+
+    const toast = $("#toast");
+
+    if (!toast) {
+      console.log("TOAST:", message);
+      return;
+    }
+
+    toast.textContent = message;
+
+    toast.classList.add("show");
+
+    clearTimeout(window.__planBToastTimer);
+
+    window.__planBToastTimer = setTimeout(function () {
+
+      toast.classList.remove("show");
+
+    }, 3500);
+
+  }
+
+
+  function showFatalError(message) {
+
+    console.error(message);
+
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+
+      `
+      <div style="
+        position:fixed;
+        top:0;
+        left:0;
+        right:0;
+        z-index:999999;
+        background:#b3261e;
+        color:#fff;
+        padding:16px;
+        text-align:center;
+        direction:rtl;
+        font-family:Arial,sans-serif;
+        font-size:15px;
+        line-height:1.8;
+      ">
+        ${escapeHtml(message)}
+      </div>
+      `
+
+    );
+
+  }
+
+
+  function firebaseErrorMessage(error) {
+
+    const code = error?.code || "";
+
+    const messages = {
+
+      "auth/invalid-credential":
+        "ایمیل یا رمز عبور اشتباه است.",
+
+      "auth/user-not-found":
+        "کاربری با این ایمیل پیدا نشد.",
+
+      "auth/wrong-password":
+        "رمز عبور اشتباه است.",
+
+      "auth/invalid-email":
+        "فرمت ایمیل صحیح نیست.",
+
+      "auth/too-many-requests":
+        "تعداد تلاش‌ها زیاد است. کمی بعد دوباره امتحان کنید."
+
+    };
+
+    return messages[code]
+      || error?.message
+      || "خطا در ورود";
+
+  }
+
+});
