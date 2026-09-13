@@ -358,6 +358,7 @@ function toast(msg, isError){
   t.className = "show" + (isError ? " error" : "");
   setTimeout(()=> t.className = "", 2500);
 }
+
 /* =========================================================
    انتشار داده‌ها برای سایت عمومی
    Firebase → data.json
