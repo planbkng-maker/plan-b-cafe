@@ -358,3 +358,156 @@ function toast(msg, isError){
   t.className = "show" + (isError ? " error" : "");
   setTimeout(()=> t.className = "", 2500);
 }
+/* =========================================================
+   انتشار داده‌ها برای سایت عمومی
+   Firebase → data.json
+   ========================================================= */
+
+const publishBtn = document.getElementById("publishBtn");
+
+if (publishBtn) {
+  publishBtn.addEventListener("click", publishData);
+}
+
+async function publishData() {
+  if (!auth.currentUser) {
+    toast("ابتدا وارد پنل مدیریت شو.", true);
+    return;
+  }
+
+  const originalText = publishBtn ? publishBtn.textContent : "";
+
+  try {
+    if (publishBtn) {
+      publishBtn.disabled = true;
+      publishBtn.textContent = "در حال آماده‌سازی...";
+    }
+
+    /* ---------- settings ---------- */
+    const settingsSnap = await db
+      .collection("settings")
+      .doc("main")
+      .get();
+
+    if (!settingsSnap.exists) {
+      throw new Error("تنظیمات اصلی پیدا نشد.");
+    }
+
+    const settings = settingsSnap.data();
+
+    /* ---------- categories ---------- */
+    const categoriesSnap = await db
+      .collection("categories")
+      .orderBy("order", "asc")
+      .get();
+
+    const categories = categoriesSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    if (!categories.length) {
+      throw new Error("هیچ دسته‌بندی‌ای وجود ندارد.");
+    }
+
+    /* ---------- items ---------- */
+    const itemsSnap = await db
+      .collection("items")
+      .orderBy("order", "asc")
+      .get();
+
+    const items = itemsSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    /* ---------- validation ---------- */
+
+    const categoryIds = new Set(categories.map(c => c.id));
+
+    const invalidItems = items.filter(item => {
+      return !item.categoryId || !categoryIds.has(item.categoryId);
+    });
+
+    if (invalidItems.length) {
+      const names = invalidItems
+        .map(item => item.title || item.id)
+        .join("، ");
+
+      throw new Error(
+        "این آیتم‌ها دسته‌بندی معتبر ندارند: " + names
+      );
+    }
+
+    categories.forEach((cat, index) => {
+      if (cat.order === undefined || cat.order === null) {
+        cat.order = index + 1;
+      }
+    });
+
+    items.forEach((item, index) => {
+      if (item.order === undefined || item.order === null) {
+        item.order = index + 1;
+      }
+    });
+
+    /* ---------- ساخت data.json ---------- */
+
+    const exportData = {
+      settings: settings,
+      categories: categories,
+      items: items
+    };
+
+    const json = JSON.stringify(exportData, null, 2);
+
+    /* ---------- دانلود فایل ---------- */
+
+    const blob = new Blob(
+      [json],
+      { type: "application/json;charset=utf-8" }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "data.json";
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+
+    toast("data.json آماده شد ✓");
+
+    if (publishBtn) {
+      publishBtn.textContent = "دانلود شد ✓";
+
+      setTimeout(() => {
+        publishBtn.textContent = originalText;
+      }, 2500);
+    }
+
+  } catch (err) {
+
+    console.error("Publish error:", err);
+
+    toast(
+      "انتشار ناموفق: " + (err.message || "خطای نامشخص"),
+      true
+    );
+
+    showFatalError(
+      "انتشار داده‌ها: " + (err.message || "خطای نامشخص")
+    );
+
+  } finally {
+
+    if (publishBtn) {
+      publishBtn.disabled = false;
+    }
+
+  }
+}
