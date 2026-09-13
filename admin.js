@@ -9,14 +9,28 @@ let CATEGORIES = [];
 let ITEMS = [];
 
 /* ---------- ورود / خروج ---------- */
-auth.onAuthStateChanged(user=>{
-  $("#loginScreen").style.display = user ? "none" : "flex";
-  $("#adminApp").style.display = user ? "block" : "none";
-  if(user){
-    loadSettings();
-    loadCategories();
-    loadItems();
-  }
+document.addEventListener("DOMContentLoaded", () => {
+
+  auth.onAuthStateChanged(user => {
+
+    const loginScreen = document.querySelector("#loginScreen");
+    const adminApp = document.querySelector("#adminApp");
+
+    if (!loginScreen || !adminApp) {
+      showFatalError("عناصر loginScreen یا adminApp در صفحه پیدا نشدند.");
+      return;
+    }
+
+    loginScreen.style.display = user ? "none" : "flex";
+    adminApp.style.display = user ? "block" : "none";
+
+    if (user) {
+      loadSettings();
+      loadCategories();
+      loadItems();
+    }
+  });
+
 });
 $("#loginForm").addEventListener("submit", e=>{
   e.preventDefault();
